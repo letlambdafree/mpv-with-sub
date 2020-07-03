@@ -16,6 +16,7 @@ filename=$(echo "$filename" | awk '{print tolower($0)}')
 episode=$(expr "$filename" : ".*\(s[0-9]\+e[0-9]\+\).*") || \
     episode=$(expr "$filename" : ".*\(e[0-9]\+\).*")
 subext=".*\.(srt|smi|ass|sub)$"
+
 printf "\nepisode is $episode\n"
 
 if [[ -n "$dir" ]]; then
@@ -32,18 +33,21 @@ fi
 for file in *; do
     originfile="$file"
     file=$(echo "$file" | awk '{print tolower($0)}')
-    if [[ "$file" =~ "$episode" && "$file" =~ "$subext" ]]; then
+    if [[ "$file" =~ "$episode" && "$file" =~ $subext ]]; then
         (( match++ ))
         subtitle="$originfile"
         printf "\nsubtitle1 is $subtitle\n"
         # break
-    elif [[ "$file" =~ e"${episode#*e}" && "$file" =~ "$subext" ]]; then
+    elif [[ "$file" =~ e"${episode#*e}" && "$file" =~ $subext ]]; then
         (( match++ ))
         subtitle="$originfile"
         printf "\nsubtitle2 is $subtitle\n"
         # break
     fi
 done
+
+printf "\nsubtitle is $subtitle\n"
+printf "\nmatch is $match\n"
 
 if [[ -n "$subtitle" && $match -eq 1 ]]; then
     mpv --sub-file="$dir""$subtitle" "$1"
