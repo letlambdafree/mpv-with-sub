@@ -1,23 +1,22 @@
 #!/bin/bash
 
 # mpv supports three subtitle options(exact, fuzzy, all)
-# but not perfect.
 # this is for a file with episodes like S01E01, E01
 
 if [[ ! -e "$1" ]]; then
-    printf "\nrequired first argument as file\n"
+    printf "\n\n required first argument as file \n\n"
     exit 1
 fi
 
 match=0
 filename="${1##*/}"
 dir="${1%$filename}"
-filename=$(echo "$filename" | awk '{print tolower($0)}')
+filename=$(awk '{print tolower($0)}' <<< $filename)
 episode=$(expr "$filename" : ".*\(s[0-9]\+e[0-9]\+\).*") || \
     episode=$(expr "$filename" : ".*\(e[0-9]\+\).*")
 subext=".*\.(srt|smi|ass|sub)$"
 
-printf "\nepisode is $episode\n"
+# printf "\nepisode is $episode\n"
 
 if [[ -n "$dir" ]]; then
   cd "$dir"
@@ -32,22 +31,22 @@ fi
 
 for file in *; do
     originfile="$file"
-    file=$(echo "$file" | awk '{print tolower($0)}')
-    if [[ "$file" =~ "$episode" && "$file" =~ $subext ]]; then
+    file=$(awk '{print tolower($0)}' <<< $file)
+    if [[ "$file" =~ $episode && "$file" =~ $subext ]]; then
         (( match++ ))
         subtitle="$originfile"
-        printf "\nsubtitle1 is $subtitle\n"
+        # printf "\n\n subtitle1 is $subtitle \n\n"
         # break
     elif [[ "$file" =~ e"${episode#*e}" && "$file" =~ $subext ]]; then
         (( match++ ))
         subtitle="$originfile"
-        printf "\nsubtitle2 is $subtitle\n"
+        # printf "\nsubtitle2 is $subtitle\n"
         # break
     fi
 done
 
-printf "\nsubtitle is $subtitle\n"
-printf "\nmatch is $match\n"
+# printf "\n\n subtitle is $subtitle \n\n"
+# printf "\n\n match is $match \n\n"
 
 if [[ -n "$subtitle" && $match -eq 1 ]]; then
     mpv --sub-file="$dir""$subtitle" "$1"
