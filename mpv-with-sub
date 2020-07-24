@@ -12,7 +12,7 @@ match=0
 filename="${1##*/}"
 dir="${1%$filename}"
 filename=$(awk '{print tolower($0)}' <<< $filename)
-episode=$(expr "$filename" : ".*\(s[0-9]\+e[0-9]\+\).*") || \
+episode=$(expr "$filename" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*") || \
     episode=$(expr "$filename" : ".*\(e[0-9]\+\).*")
 subext=".*\.(srt|smi|ass|sub)$"
 
@@ -24,7 +24,7 @@ fi
 
 # filename = S01E01   subname = S01E01
 #                               E01
-# filename = S01.E01  subname = S01E01
+# filename = S01.E01  subname = S01.E01
 #                               E01
 # filename = E01      subname = E01
 #                               S01E01
@@ -40,7 +40,7 @@ for file in * ; do
     elif [[ "$file" =~ e"${episode#*e}" && "$file" =~ $subext ]] ; then
         (( match++ ))
         subtitle="$originfile"
-        # printf "\nsubtitle2 is $subtitle\n"
+        # printf "\n subtitle2 is $subtitle \n"
         # break
     fi
 done
