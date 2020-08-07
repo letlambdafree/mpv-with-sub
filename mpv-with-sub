@@ -17,7 +17,7 @@ fi
 
 match=0
 filename="${1##*/}"
-dir="${1%$filename}"
+filedir="${1%$filename}"
 filename=$(awk '{print tolower($0)}' <<< $filename)
 
 ep=$(expr "$filename" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*") || \
@@ -28,12 +28,12 @@ subext=".*\.(srt|smi|ass|sub)$"
 
 printf "\n\n episode is $ep \n\n"
 
-if [[ -n "$dir" ]] ; then
-  cd "$dir"
+if [[ -n "$filedir" ]] ; then
+  cd "$filedir"
 fi
 
-# recursive possible?
-for file in * ; do
+shopt -s globstar
+for file in ./**/* ; do
     originfile="$file"
     file=$(awk '{print tolower($0)}' <<< $file)
     if [[ "$file" =~ $ep && "$file" =~ $subext ]] ; then
@@ -58,7 +58,7 @@ printf "\n\n subtitle is $subtitle \n\n"
 printf "\n\n match is $match \n\n"
 
 if [[ -n "$subtitle" && $match -eq 1 ]] ; then
-    mpv --sub-file="$dir""$subtitle" "$1"
+    mpv --sub-file="$filedir""$subtitle" "$1"
 else
     mpv "$1"
 fi
