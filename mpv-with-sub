@@ -14,10 +14,10 @@ if [[ ! -e "$1" ]] ; then
     printf "\n\n required first argument as file \n\n"
     exit 1
 fi
-
+printf "\n\n file is $1 \n\n"
 match=0
 filename="${1##*/}"
-filedir="${1%$filename}"
+filedir="$(dirname -- "$(readlink -f -- "$1")")"
 filename=$(awk '{print tolower($0)}' <<< $filename)
 
 ep=$(expr "$filename" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*") || \
@@ -32,6 +32,8 @@ if [[ -n "$filedir" ]] ; then
   cd "$filedir"
 fi
 
+# for recursive directories
+# probably need -1 deep level, otherwise so many files checked
 shopt -s globstar
 for file in ./**/* ; do
     originfile="$file"
