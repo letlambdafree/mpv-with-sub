@@ -13,7 +13,10 @@
 # --sub-files="subtitle1:subtitle2:subtitle3" or
 # --sub-file="$subtitle1" --sub-file="$subtitle2" --sub-file="$subtitle3"
 
-[[ -e "$1" ]] || (printf "\n required first argument as file \n" ; exit 1)
+if [[ ! -e "$1" ]] ; then
+    printf "\n\n required first argument as file \n\n"
+    exit 1
+fi
 
 filename="${1##*/}"
 printf "\n filename is $filename \n"
@@ -24,7 +27,12 @@ filename=$(awk '{print tolower($0)}' <<< "$filename")
 ep1=$(expr "$filename" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
 ep2=$(expr "$filename" : ".*\(e[0-9]\+\).*")
 ep3=$(expr "$filename" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
-ep=$ep1 || ep=$ep2 || ep=$ep3 || (mpv "$1" ; exit 0)
+ep=$ep1 || ep=$ep2 || ep=$ep3
+
+if [[ -z "$ep" ]] ; then
+    mpv "$1"
+    exit 0
+fi
 
 printf "\n episode is $ep \n"
 
