@@ -34,34 +34,48 @@ if [[ -n "$filedir" ]] ; then
 fi
 
 # for recursive directories
-# probably need -1 deep level, otherwise so many files checked
+# probably need -2 deep level, otherwise so many files checked
 shopt -s globstar
 for file in **/* ; do
     originfile="$file"
     file=$(awk '{print tolower($0)}' <<< $file)
     if [[ "$file" =~ $ep && "$file" =~ $subext ]] ; then
-        (( match++ ))
-        subtitle="$originfile"
-        printf "\n\n subtitle1 is $subtitle \n\n"
+        if [[ -z $subtitles1 ]] ; then
+            subtitles1="$originfile"
+        else
+            subtitles1=$subtitles1:"$originfile"
+        fi
+        printf "\n\n subtitles1 is $subtitles1 \n\n"
         # break
     elif [[ "$file" =~ e0*"${ep#*e}" && "$file" =~ $subext ]] ; then
-        (( match++ ))
-        subtitle="$originfile"
-        printf "\n\n subtitle2 is $subtitle \n\n"
+        if [[ -z $subtitles2 ]] ; then
+            subtitles2="$originfile"
+        else
+            subtitles2=$subtitles2:"$originfile"
+        fi
+        printf "\n\n subtitles2 is $subtitles2 \n\n"
         # break
     elif [[ "$file" =~ e0*"${ep#*part\.}" && "$file" =~ $subext ]] ; then
-        (( match++ ))
-        subtitle="$originfile"
-        printf "\n\n subtitle3 is $subtitle \n\n"
+        if [[ -z $subtitles3 ]] ; then
+            subtitles3="$originfile"
+        else
+            subtitles3=$subtitles3:"$originfile"
+        fi
+        printf "\n\n subtitles3 is $subtitles3 \n\n"
         # break
     fi
 done
 
-printf "\n\n subtitle is $subtitle \n\n"
-printf "\n\n match is $match \n\n"
+subtitles=$subtitles1 || subtitles=$subtitles2 || subtitles=$subtitles3
 
-if [[ -n "$subtitle" && $match -eq 1 ]] ; then
-    mpv --sub-file="$subtitle" "$1"
+printf "\n\n subtitles is $subtitles \n\n"
+
+# subtiles="...:...:...:...:...:"
+# --sub-files="$subtiles"
+# --sub-file="$subtitle1" --sub-file="$subtitle2" --sub-file="$subtitle3" ...
+
+if [[ -n "$subtitles" ]] ; then
+    mpv --sub-files="$subtitles" "$1"
 else
     mpv "$1"
 fi
