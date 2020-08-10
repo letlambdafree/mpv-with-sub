@@ -21,9 +21,10 @@ printf "\n\n filename is $filename \n\n"
 filedir="${1%$filename}"
 filename=$(awk '{print tolower($0)}' <<< $filename)
 
-ep=$(expr "$filename" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*") || \
-    ep=$(expr "$filename" : ".*\(e[0-9]\+\).*") || \
-    ep=$(expr "$filename" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
+ep1=$(expr "$filename" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
+ep2=$(expr "$filename" : ".*\(e[0-9]\+\).*")
+ep3=$(expr "$filename" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
+ep=$ep1 || ep=$ep2 || ep=$ep3 || mpv "$1" && exit 0
 
 subext=".*\.(srt|smi|ass|sub)$"
 
@@ -34,7 +35,7 @@ if [[ -n "$filedir" ]] ; then
 fi
 
 # for recursive directories
-# probably need -2 deep level, otherwise so many files checked
+# probably need -2 deep level, otherwise so many files will be checked
 shopt -s globstar
 for file in **/* ; do
     originfile="$file"
