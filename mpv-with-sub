@@ -10,73 +10,64 @@
 # filename = Series.1.Part.1    subname = Series.1.Part.1
 #                                         E01
 
-if [[ ! -e "$1" ]] ; then
-    printf "\n\n required first argument as file \n\n"
-    exit 1
-fi
+# --sub-files="subtitle1:subtitle2:subtitle3" or
+# --sub-file="$subtitle1" --sub-file="$subtitle2" --sub-file="$subtitle3"
 
-match=0
+[[ -e "$1" ]] || (printf "\n required first argument as file \n" ; exit 1)
+
 filename="${1##*/}"
-printf "\n\n filename is $filename \n\n"
-filedir="${1%$filename}"
-filename=$(awk '{print tolower($0)}' <<< $filename)
+printf "\n filename is $filename \n"
+filedir="${1%"$filename"}"
+printf "\n filedir is $filedir \n"
+filename=$(awk '{print tolower($0)}' <<< "$filename")
 
 ep1=$(expr "$filename" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
 ep2=$(expr "$filename" : ".*\(e[0-9]\+\).*")
 ep3=$(expr "$filename" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
-ep=$ep1 || ep=$ep2 || ep=$ep3 || mpv "$1" && exit 0
+ep=$ep1 || ep=$ep2 || ep=$ep3 || (mpv "$1" ; exit 0)
+
+printf "\n episode is $ep \n"
 
 subext=".*\.(srt|smi|ass|sub)$"
 
-printf "\n\n episode is $ep \n\n"
-
-if [[ -n "$filedir" ]] ; then
-  cd "$filedir"
-fi
+[[ -n "$filedir" ]] && cd "$filedir"
 
 # for recursive directories
 # probably need -2 deep level, otherwise so many files will be checked
+
 shopt -s globstar
 for file in **/* ; do
     originfile="$file"
-    file=$(awk '{print tolower($0)}' <<< $file)
+    file=$(awk '{print tolower($0)}' <<< "$file")
     if [[ "$file" =~ $ep && "$file" =~ $subext ]] ; then
         if [[ -z $subtitles1 ]] ; then
             subtitles1="$originfile"
         else
-            subtitles1=$subtitles1:"$originfile"
+            subtitles1="$subtitles1":"$originfile"
         fi
-        printf "\n\n subtitles1 is $subtitles1 \n\n"
+        printf "\n subtitles1 is $subtitles1 \n"
         # break
     elif [[ "$file" =~ e0*"${ep#*e}" && "$file" =~ $subext ]] ; then
         if [[ -z $subtitles2 ]] ; then
             subtitles2="$originfile"
         else
-            subtitles2=$subtitles2:"$originfile"
+            subtitles2="$subtitles2":"$originfile"
         fi
-        printf "\n\n subtitles2 is $subtitles2 \n\n"
+        printf "\n subtitles2 is $subtitles2 \n"
         # break
     elif [[ "$file" =~ e0*"${ep#*part\.}" && "$file" =~ $subext ]] ; then
         if [[ -z $subtitles3 ]] ; then
             subtitles3="$originfile"
         else
-            subtitles3=$subtitles3:"$originfile"
+            subtitles3="$subtitles3":"$originfile"
         fi
-        printf "\n\n subtitles3 is $subtitles3 \n\n"
+        printf "\n subtitles3 is $subtitles3 \n"
         # break
     fi
 done
 
-subtitles=$subtitles1 || subtitles=$subtitles2 || subtitles=$subtitles3
+subtitles="$subtitles1" || subtitles="$subtitles2" || subtitles="$subtitles3"
 
-printf "\n\n subtitles is $subtitles \n\n"
+printf "\n subtitles is $subtitles \n"
 
-# subtiles="...:...:...:...:...:"
-# --sub-files="$subtiles"
-# --sub-file="$subtitle1" --sub-file="$subtitle2" --sub-file="$subtitle3" ...
-
-if [[ -n "$subtitles" ]] ; then
-    mpv --sub-files="$subtitles" "$1"
-else
-    mpv "$1"
-fi
+[[ -n "$subtitles" ]] && mpv --sub-files="$subtitles" "$1" || mpv "$1"
