@@ -89,17 +89,20 @@ subtitles="$subtitles1" || subtitles="$subtitles2" || subtitles="$subtitles3"
 printf "\n subtitles is $subtitles \n"
 
 # when runs in terminal, activate select-loop
+# to distinguish between dired and terminal from running script
 if [[ "$2" != "--dired" ]] ; then
-    subtitles=$(sed s/:/\\n/g <<< $subtitles)
-    if (( $(wc -l <<< $subtitles) = 1 )) ; then
-        selectedsubtitle="$subtitles"
-    elif (( $(wc -l <<< $subtitles) > 1 )) ; then
-        readarray -t arr_subtitles <<< "$subtitles"
-        select subtitle in "${arr_subtitles[@]}" ; do
+    subtitlelines=$(sed s/:/\\n/g <<< $subtitles)
+    if (( $(wc -l <<< $subtitlelines) = 1 )) ; then
+        selectedsubtitle="$subtitlelines"
+    elif (( $(wc -l <<< $subtitlelines) > 1 )) ; then
+        readarray -t arr_subtitles <<< "$subtitlelines"
+        select subtitle in "${arr_subtitlelines[@]}" ; do
             if [[ $REPLY =~ ^("*"|"0")$ ]] ; then
                 printf "\n\n You choose all subtitles. They'll be loaded. \n"
                 printf "\n To cycle through the available subtitles, \n"
                 printf "\n press j and J. \n\n"
+                mpv --sub-files="$filedir""$subtitlelines" "$1"
+                exit 0
             fi
             selectedsubtitle="$subtitle"
             break
@@ -108,7 +111,7 @@ if [[ "$2" != "--dired" ]] ; then
 fi
 
 if [[ -n $selectedsubtitle ]] ; then
-    mpv --sub-files="$filedir""$selectedsubtitle" "$1"
+    mpv --sub-file="$filedir""$selectedsubtitle" "$1"
 elif [[ -n $subtitles ]] ; then
     mpv --sub-files="$filedir""$subtitles" "$1"
 else
