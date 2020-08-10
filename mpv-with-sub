@@ -3,21 +3,25 @@
 # mpv supports three subtitle options (exact, fuzzy, all)
 # this is for a file with episodes like S01E01, E01, Series.1.Part.1
 
-# filename = S01E01             subname = S01E01
-#            S01.E01                      E01
-# filename = E01                subname = E01
-#                                         S01E01
-# filename = Series.1.Part.1    subname = Series.1.Part.1
-#                                         E01
+# filename = S01E01             subtitle = S01E01
+#            S01.E01                       E01
+#
+# filename = E01                subtitle = E01
+#                                          S01E01
+#
+# filename = Series.1.Part.1    subtitle = Series.1.Part.1
+#                                          E01
 
-# --sub-files="subtitle1:subtitle2:subtitle3" or
+# --sub-files="subtitle1:subtitle2:subtitle3"
+# or
 # --sub-file="$subtitle1" --sub-file="$subtitle2" --sub-file="$subtitle3"
 
 if [[ ! -e "$1" ]] ; then
-    printf "\n\n required first argument as file \n\n"
+    printf "\n required first argument as file \n"
     exit 1
 fi
 
+PS3="Choose : "
 filename="${1##*/}"
 printf "\n filename is $filename \n"
 filedir="${1%"$filename"}"
@@ -47,35 +51,66 @@ shopt -s globstar
 for file in **/* ; do
     originfile="$file"
     file=$(awk '{print tolower($0)}' <<< "$file")
-    if [[ "$file" =~ $ep && "$file" =~ $subext ]] ; then
-        if [[ -z $subtitles1 ]] ; then
-            subtitles1="$originfile"
-        else
-            subtitles1="$subtitles1":"$originfile"
+    if [[ "$file" =~ $subext ]] ; then
+        if [[ "$file" =~ $ep ]] ; then
+            if [[ -z $subtitles1 ]] ; then
+                subtitles1="$originfile"
+            else
+                subtitles1="$subtitles1":"$originfile"
+            fi
+            printf "\n subtitles1 is $subtitles1 \n"
+            # break
+        elif [[ "$file" =~ e0*"${ep#*e}" ]] ; then
+            if [[ -z $subtitles2 ]] ; then
+                subtitles2="$originfile"
+            else
+                subtitles2="$subtitles2":"$originfile"
+            fi
+            printf "\n subtitles2 is $subtitles2 \n"
+            # break
+        elif [[ "$file" =~ e0*"${ep#*part\.}" ]] ; then
+            if [[ -z $subtitles3 ]] ; then
+                subtitles3="$originfile"
+            else
+                subtitles3="$subtitles3":"$originfile"
+            fi
+            printf "\n subtitles3 is $subtitles3 \n"
+            # break
         fi
-        printf "\n subtitles1 is $subtitles1 \n"
-        # break
-    elif [[ "$file" =~ e0*"${ep#*e}" && "$file" =~ $subext ]] ; then
-        if [[ -z $subtitles2 ]] ; then
-            subtitles2="$originfile"
-        else
-            subtitles2="$subtitles2":"$originfile"
-        fi
-        printf "\n subtitles2 is $subtitles2 \n"
-        # break
-    elif [[ "$file" =~ e0*"${ep#*part\.}" && "$file" =~ $subext ]] ; then
-        if [[ -z $subtitles3 ]] ; then
-            subtitles3="$originfile"
-        else
-            subtitles3="$subtitles3":"$originfile"
-        fi
-        printf "\n subtitles3 is $subtitles3 \n"
-        # break
     fi
 done
 
+# s01e01 > e01 > series.1.part.1
 subtitles="$subtitles1" || subtitles="$subtitles2" || subtitles="$subtitles3"
+
+# all subtitles, s01e01 + e01 + series.1.part.1
+# subtitles="$subtitles1":"$subtitles2":"$subtitles3"
 
 printf "\n subtitles is $subtitles \n"
 
-[[ -n "$subtitles" ]] && mpv --sub-files="$subtitles" "$1" || mpv "$1"
+# when runs in terminal, activate select-loop
+if [[ "$2" != "--dired" ]] ; then
+    subtitles=$(sed s/:/\\n/g <<< $subtitles)
+    if (( $(wc -l <<< $subtitles) = 1 )) ; then
+        selectedsubtitle="$subtitles"
+    elif (( $(wc -l <<< $subtitles) > 1 )) ; then
+        readarray -t arr_subtitles <<< "$subtitles"
+        select subtitle in "${arr_subtitles[@]}" ; do
+            if [[ $REPLY =~ ^("*"|"0")$ ]] ; then
+                printf "\n\n You choose all subtitles. They'll be loaded. \n"
+                printf "\n To cycle through the available subtitles, \n"
+                printf "\n press j and J. \n\n"
+            fi
+            selectedsubtitle="$subtitle"
+            break
+        done
+    fi
+fi
+
+if [[ -n $selectedsubtitle ]] ; then
+    mpv --sub-files="$filedir""$selectedsubtitle" "$1"
+elif [[ -n $subtitles ]] ; then
+    mpv --sub-files="$filedir""$subtitles" "$1"
+else
+    mpv "$1"
+fi
