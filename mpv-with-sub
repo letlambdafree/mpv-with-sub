@@ -1,16 +1,16 @@
 #!/bin/bash
 
 # mpv supports three subtitle options (exact, fuzzy, all)
-# this is for a file with episodes like S01E01, E01, Series.1.Part.1
+# this is only for a video with episodes like S01E01, E01, Series.1.Part.1
 
-# filename = S01E01             subtitle = S01E01
-#            S01.E01                       E01
+# video = S01E01             subtitle = S01E01
+#         S01.E01                       E01
 #
-# filename = E01                subtitle = E01
-#                                          S01E01
+# video = E01                subtitle = E01
+#                                       S01E01
 #
-# filename = Series.1.Part.1    subtitle = Series.1.Part.1
-#                                          E01
+# video = Series.1.Part.1    subtitle = Series.1.Part.1
+#                                       E01
 
 # --sub-files="subtitle1:subtitle2:subtitle3"
 #
@@ -24,13 +24,15 @@ if [[ ! -e $1 ]] ; then
 fi
 
 PS3="Choose : "
-filename="${1##*/}"
-filedir="${1%"$filename"}"
-lowerfilename=$(awk '{print tolower($0)}' <<< "$filename")
+SUBEXT=".*\.(srt|smi|ass|sub)$"
 
-ep1=$(expr "$lowerfilename" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
-ep2=$(expr "$lowerfilename" : ".*\(e[0-9]\+\).*")
-ep3=$(expr "$lowerfilename" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
+videoname="${1##*/}"
+videodir="${1%"$videoname"}"
+lowername=$(awk '{print tolower($0)}' <<< "$videoname")
+
+ep1=$(expr "$lowername" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
+ep2=$(expr "$lowername" : ".*\(e[0-9]\+\).*")
+ep3=$(expr "$lowername" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
 ep=$ep1 || ep=$ep2 || ep=$ep3
 
 if [[ -z $ep ]] ; then
@@ -42,9 +44,7 @@ fi
 # printf "\n episode is $ep"
 # printf "\n"
 
-subext=".*\.(srt|smi|ass|sub)$"
-
-[[ -n $filedir ]] && cd "$filedir"
+[[ -n $videodir ]] && cd "$videodir"
 
 # for recursive directories
 # probably need -2 deep level, otherwise so many files will be checked
@@ -52,7 +52,7 @@ subext=".*\.(srt|smi|ass|sub)$"
 shopt -s globstar
 for file in **/* ; do
     lowerfile=$(awk '{print tolower($0)}' <<< "$file")
-    if [[ $lowerfile =~ $subext ]] ; then
+    if [[ $lowerfile =~ $SUBEXT ]] ; then
         if [[ $lowerfile =~ $ep ]] ; then
             if [[ -z $subtitles1 ]] ; then
                 subtitles1="$file"
@@ -88,17 +88,17 @@ for file in **/* ; do
 done
 
 # s01e01 > e01 > series.1.part.1
-# subtitles="$subtitles1" || subtitles="$subtitles2" || subtitles="$subtitles3"
+subtitles="$subtitles1" || subtitles="$subtitles2" || subtitles="$subtitles3"
 
 # all subtitles, s01e01 + e01 + series.1.part.1
-subtitles="$subtitles1":"$subtitles2":"$subtitles3"
+# subtitles="$subtitles1":"$subtitles2":"$subtitles3"
 
 # printf "\n"
 # printf "\n subtitles is $subtitles"
 # printf "\n"
 
-# when runs in terminal, activate select-loop
-# to distinguish between emacs-dired and terminal from running script
+# when this script runs in terminal, select-loop activates.
+# added "--dired" as $2 to distinguish between emacs-dired and terminal
 if [[ $2 != "--dired" ]] ; then
     subtitlelines=$(sed s/:/\\n/g <<< $subtitles)
     # printf "\n"
@@ -116,10 +116,9 @@ if [[ $2 != "--dired" ]] ; then
                 printf "\n To cycle through the available subtitles,"
                 printf "\n press j and J."
                 printf "\n"
-                printf "\n"
                 grep --color=auto . <<< "$subtitles"
                 printf "\n"
-                mpv --sub-files="$filedir""$subtitles" "$1"
+                mpv --sub-files="$videodir""$subtitles" "$1"
                 exit 0
             elif [[ $REPLY =~ ^("0")$ ]] ; then
                 printf "\n"
@@ -139,12 +138,12 @@ if [[ -n $selectedsubtitle ]] ; then
     printf "\n"
     grep --color=auto . <<< "$selectedsubtitle"
     printf "\n"
-    mpv --sub-file="$filedir""$selectedsubtitle" "$1"
+    mpv --sub-file="$videodir""$selectedsubtitle" "$1"
 elif [[ -n $subtitles ]] ; then
     printf "\n"
     grep --color=auto . <<< "$subtitles"
     printf "\n"
-    mpv --sub-files="$filedir""$subtitles" "$1"
+    mpv --sub-files="$videodir""$subtitles" "$1"
 else
     mpv "$1"
 fi
