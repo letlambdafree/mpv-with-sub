@@ -13,12 +13,12 @@
 #                                          E01
 
 # --sub-files="subtitle1:subtitle2:subtitle3"
-# or
+#
 # --sub-file="$subtitle1" --sub-file="$subtitle2" --sub-file="$subtitle3"
 
 if [[ ! -e $1 ]] ; then
     printf "\n"
-    printf "\n required first argument as file"
+    printf "\n required a file as the first argument."
     printf "\n"
     exit 1
 fi
@@ -26,11 +26,11 @@ fi
 PS3="Choose : "
 filename="${1##*/}"
 filedir="${1%"$filename"}"
-filename=$(awk '{print tolower($0)}' <<< "$filename")
+lowerfilename=$(awk '{print tolower($0)}' <<< "$filename")
 
-ep1=$(expr "$filename" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
-ep2=$(expr "$filename" : ".*\(e[0-9]\+\).*")
-ep3=$(expr "$filename" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
+ep1=$(expr "$lowerfilename" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
+ep2=$(expr "$lowerfilename" : ".*\(e[0-9]\+\).*")
+ep3=$(expr "$lowerfilename" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
 ep=$ep1 || ep=$ep2 || ep=$ep3
 
 if [[ -z $ep ]] ; then
@@ -51,34 +51,33 @@ subext=".*\.(srt|smi|ass|sub)$"
 
 shopt -s globstar
 for file in **/* ; do
-    originfile="$file"
-    file=$(awk '{print tolower($0)}' <<< "$file")
-    if [[ $file =~ $subext ]] ; then
-        if [[ $file =~ $ep ]] ; then
+    lowerfile=$(awk '{print tolower($0)}' <<< "$file")
+    if [[ $lowerfile =~ $subext ]] ; then
+        if [[ $lowerfile =~ $ep ]] ; then
             if [[ -z $subtitles1 ]] ; then
-                subtitles1="$originfile"
+                subtitles1="$file"
             else
-                subtitles1="$subtitles1":"$originfile"
+                subtitles1="$subtitles1":"$file"
             fi
             # printf "\n"
             # printf "\n subtitles1 is $subtitles1"
             # printf "\n"
             # break
-        elif [[ $file =~ e0*"${ep#*e}" ]] ; then
+        elif [[ $lowerfile =~ e0*"${ep#*e}" ]] ; then
             if [[ -z $subtitles2 ]] ; then
-                subtitles2="$originfile"
+                subtitles2="$file"
             else
-                subtitles2="$subtitles2":"$originfile"
+                subtitles2="$subtitles2":"$file"
             fi
             # printf "\n"
             # printf "\n subtitles2 is $subtitles2"
             # printf "\n"
             # break
-        elif [[ $file =~ e0*"${ep#*part\.}" ]] ; then
+        elif [[ $lowerfile =~ e0*"${ep#*part\.}" ]] ; then
             if [[ -z $subtitles3 ]] ; then
-                subtitles3="$originfile"
+                subtitles3="$file"
             else
-                subtitles3="$subtitles3":"$originfile"
+                subtitles3="$subtitles3":"$file"
             fi
             # printf "\n"
             # printf "\n subtitles3 is $subtitles3"
