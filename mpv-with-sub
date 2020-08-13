@@ -16,7 +16,7 @@
 # or
 # --sub-file="$subtitle1" --sub-file="$subtitle2" --sub-file="$subtitle3"
 
-if [[ ! -e "$1" ]] ; then
+if [[ ! -e $1 ]] ; then
     printf "\n"
     printf "\n required first argument as file"
     printf "\n"
@@ -25,13 +25,7 @@ fi
 
 PS3="Choose : "
 filename="${1##*/}"
-printf "\n"
-printf "\n filename is $filename"
-printf "\n"
 filedir="${1%"$filename"}"
-printf "\n"
-printf "\n filedir is $filedir"
-printf "\n"
 filename=$(awk '{print tolower($0)}' <<< "$filename")
 
 ep1=$(expr "$filename" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
@@ -39,18 +33,18 @@ ep2=$(expr "$filename" : ".*\(e[0-9]\+\).*")
 ep3=$(expr "$filename" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
 ep=$ep1 || ep=$ep2 || ep=$ep3
 
-if [[ -z "$ep" ]] ; then
+if [[ -z $ep ]] ; then
     mpv "$1"
     exit 0
 fi
 
-printf "\n"
-printf "\n episode is $ep"
-printf "\n"
+# printf "\n"
+# printf "\n episode is $ep"
+# printf "\n"
 
 subext=".*\.(srt|smi|ass|sub)$"
 
-[[ -n "$filedir" ]] && cd "$filedir"
+[[ -n $filedir ]] && cd "$filedir"
 
 # for recursive directories
 # probably need -2 deep level, otherwise so many files will be checked
@@ -59,67 +53,74 @@ shopt -s globstar
 for file in **/* ; do
     originfile="$file"
     file=$(awk '{print tolower($0)}' <<< "$file")
-    if [[ "$file" =~ $subext ]] ; then
-        if [[ "$file" =~ $ep ]] ; then
+    if [[ $file =~ $subext ]] ; then
+        if [[ $file =~ $ep ]] ; then
             if [[ -z $subtitles1 ]] ; then
                 subtitles1="$originfile"
             else
                 subtitles1="$subtitles1":"$originfile"
             fi
-            printf "\n"
-            printf "\n subtitles1 is $subtitles1"
-            printf "\n"
+            # printf "\n"
+            # printf "\n subtitles1 is $subtitles1"
+            # printf "\n"
             # break
-        elif [[ "$file" =~ e0*"${ep#*e}" ]] ; then
+        elif [[ $file =~ e0*"${ep#*e}" ]] ; then
             if [[ -z $subtitles2 ]] ; then
                 subtitles2="$originfile"
             else
                 subtitles2="$subtitles2":"$originfile"
             fi
-            printf "\n"
-            printf "\n subtitles2 is $subtitles2"
-            printf "\n"
+            # printf "\n"
+            # printf "\n subtitles2 is $subtitles2"
+            # printf "\n"
             # break
-        elif [[ "$file" =~ e0*"${ep#*part\.}" ]] ; then
+        elif [[ $file =~ e0*"${ep#*part\.}" ]] ; then
             if [[ -z $subtitles3 ]] ; then
                 subtitles3="$originfile"
             else
                 subtitles3="$subtitles3":"$originfile"
             fi
-            printf "\n"
-            printf "\n subtitles3 is $subtitles3"
-            printf "\n"
+            # printf "\n"
+            # printf "\n subtitles3 is $subtitles3"
+            # printf "\n"
             # break
         fi
     fi
 done
 
 # s01e01 > e01 > series.1.part.1
-subtitles="$subtitles1" || subtitles="$subtitles2" || subtitles="$subtitles3"
+# subtitles="$subtitles1" || subtitles="$subtitles2" || subtitles="$subtitles3"
 
 # all subtitles, s01e01 + e01 + series.1.part.1
-# subtitles="$subtitles1":"$subtitles2":"$subtitles3"
+subtitles="$subtitles1":"$subtitles2":"$subtitles3"
 
-printf "\n"
-printf "\n subtitles is $subtitles"
-printf "\n"
+# printf "\n"
+# printf "\n subtitles is $subtitles"
+# printf "\n"
 
 # when runs in terminal, activate select-loop
 # to distinguish between emacs-dired and terminal from running script
-if [[ "$2" != "--dired" ]] ; then
+if [[ $2 != "--dired" ]] ; then
     subtitlelines=$(sed s/:/\\n/g <<< $subtitles)
-    if (( $(wc -l <<< $subtitlelines) = 1 )) ; then
+    # printf "\n"
+    # printf "\n subtitlelines is $subtitlelines"
+    # printf "\n"
+    if (( $(wc -l <<< $subtitlelines) == 1 )) ; then
         selectedsubtitle="$subtitlelines"
     elif (( $(wc -l <<< $subtitlelines) > 1 )) ; then
+        printf "\n"
         readarray -t arr_subtitles <<< "$subtitlelines"
-        select subtitle in "${arr_subtitlelines[@]}" ; do
-            if [[ $REPLY =~ ^("*"|"999")$ ]] ; then
+        select subtitle in "${arr_subtitles[@]}" ; do
+            if [[ $REPLY =~ ^("*"|"00")$ ]] ; then
                 printf "\n"
                 printf "\n You choose all subtitles. They'll be loaded."
                 printf "\n To cycle through the available subtitles,"
                 printf "\n press j and J."
                 printf "\n"
-                mpv --sub-files="$filedir""$subtitlelines" "$1"
+                printf "\n"
+                grep --color=auto . <<< "$subtitles"
+                printf "\n"
+                mpv --sub-files="$filedir""$subtitles" "$1"
                 exit 0
             elif [[ $REPLY =~ ^("0")$ ]] ; then
                 printf "\n"
@@ -136,8 +137,14 @@ if [[ "$2" != "--dired" ]] ; then
 fi
 
 if [[ -n $selectedsubtitle ]] ; then
+    printf "\n"
+    grep --color=auto . <<< "$selectedsubtitle"
+    printf "\n"
     mpv --sub-file="$filedir""$selectedsubtitle" "$1"
 elif [[ -n $subtitles ]] ; then
+    printf "\n"
+    grep --color=auto . <<< "$subtitles"
+    printf "\n"
     mpv --sub-files="$filedir""$subtitles" "$1"
 else
     mpv "$1"
