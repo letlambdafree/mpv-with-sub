@@ -33,7 +33,14 @@ lowername=$(awk '{print tolower($0)}' <<< "$videoname")
 ep1=$(expr "$lowername" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
 ep2=$(expr "$lowername" : ".*\(e[0-9]\+\).*")
 ep3=$(expr "$lowername" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
-ep=$ep1 || ep=$ep2 || ep=$ep3
+
+if [[ -n $ep1 ]] ; then
+    ep="$ep1"
+elif [[ -n $ep2 ]] ; then
+    ep="$ep2"
+elif [[ -n $ep3 ]] ; then
+    ep="$ep3"
+fi
 
 if [[ -z $ep ]] ; then
     mpv "$1"
@@ -88,14 +95,20 @@ for file in **/* ; do
 done
 
 # s01e01 > e01 > series.1.part.1
-subtitles="$subtitles1" || subtitles="$subtitles2" || subtitles="$subtitles3"
+if [[ -n $subtitles1 ]] ; then
+    subtitles="$subtitles1"
+elif [[ -n $subtitles2 ]] ; then
+    subtitles="$subtitles2"
+elif [[ -n $subtitles3 ]] ; then
+    subtitles="$subtitles3"
+fi
 
 # all subtitles, s01e01 + e01 + series.1.part.1
 # subtitles="$subtitles1":"$subtitles2":"$subtitles3"
 
-# printf "\n"
-# printf "\n subtitles is $subtitles"
-# printf "\n"
+printf "\n"
+printf "\n subtitles is $subtitles"
+printf "\n"
 
 # when this script runs in terminal, select-loop activates.
 # added "--dired" as $2 to distinguish between emacs-dired and terminal
