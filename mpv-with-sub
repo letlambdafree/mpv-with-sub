@@ -50,7 +50,6 @@ ep3=$(expr "$lowername" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
 if [[ -n $ep1 ]] ; then ep="$ep1"
 elif [[ -n $ep2 ]] ; then ep="$ep2"
 elif [[ -n $ep3 ]] ; then ep="$ep3" ; fi
-
 # printf "\n"
 # printf "\n episode is $ep"
 # printf "\n"
@@ -59,7 +58,6 @@ elif [[ -n $ep3 ]] ; then ep="$ep3" ; fi
 
 # for recursive directories
 # probably need -2 deep level, otherwise so many files will be checked
-
 shopt -s globstar
 for file in **/* ; do
     lowerfile=${file,,}
@@ -117,18 +115,12 @@ for file in **/* ; do
 done
 
 # only one subtitle > exact > fuzz > s01e01 > e01 > series.1.part.1
-if [[ -n $subtitles1 ]] ; then subtitles="$subtitles1"
+if (( subcount == 1 )) ; then subtitles="$subfile"
+elif [[ -n $subtitles1 ]] ; then subtitles="$subtitles1"
 elif [[ -n $subtitles2 ]] ; then subtitles="$subtitles2"
 elif [[ -n $subtitles3 ]] ; then subtitles="$subtitles3"
 elif [[ -n $subtitles4 ]] ; then subtitles="$subtitles4"
 elif [[ -n $subtitles5 ]] ; then subtitles="$subtitles5" ; fi
-
-# only 1 subtitle in the directory
-(( subcount == 1 )) && subtitles="$subfile"
-
-# all subtitles, s01e01 + e01 + series.1.part.1
-# subtitles="$subtitles1":"$subtitles2":"$subtitles3"
-
 # printf "\n"
 # printf "\n subtitles is $subtitles"
 # printf "\n"
