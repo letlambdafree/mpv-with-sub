@@ -1,35 +1,47 @@
 #!/bin/bash
 
-# mpv supports three subtitle options (exact, fuzzy, all)
-# this is only for a video with episodes like S01E01, E01, Series.1.Part.1
+# mpv have three subtitle options (exact, fuzzy, all)
 
-# video = S01E01             subtitle = S01E01
-#         S01.E01                       E01
-#
-# video = E01                subtitle = E01
-#                                       S01E01
-#
-# video = Series.1.Part.1    subtitle = Series.1.Part.1
-#                                       E01
+# this script has the following options
+# 1. only one subtitle in the directory(recursive)
+# 2. exact same subtitle with media file
+# 3. fuzzy subtitle with media file
+# 4. episode subtitle like S01E01, E01, Series.1.Part.1
+# 5. in terminal, if subtitles exist, you can choose one or all or none
 
+# if it failed to find a subtitle, it uses a mpv's original option
+
+# the episode part of subtitle
+#
+# S01E01
+# S01.E01
+# E01
+# Series.1.Part.1
+
+# two ways which to load subtitle files by mpv
 # --sub-files="subtitle1:subtitle2:subtitle3"
 #
 # --sub-file="$subtitle1" --sub-file="$subtitle2" --sub-file="$subtitle3"
 
+## TODO
+#
+#
+#
+
 if [[ ! -e $1 ]] ; then
     printf "\n"
-    printf "\n required a file as the first argument."
+    printf "\n mpv-with-sub requires a file as the first argument."
     printf "\n"
     exit 1
 fi
 
 PS3="Choose : "
-SUBEXT=".*\.(srt|smi|ass|sub)$"
-
+SUBEXT="(srt|smi|ass|sub)"
 videoname="${1##*/}"
+videonameext="${1##*.}"
+videosansname="${videoname%."$videonameext"}"
 videodir="${1%"$videoname"}"
-lowername=$(awk '{print tolower($0)}' <<< "$videoname")
-
+lowername=${videoname,,}
 ep1=$(expr "$lowername" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
 ep2=$(expr "$lowername" : ".*\(e[0-9]\+\).*")
 ep3=$(expr "$lowername" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
@@ -40,11 +52,6 @@ elif [[ -n $ep2 ]] ; then
     ep="$ep2"
 elif [[ -n $ep3 ]] ; then
     ep="$ep3"
-fi
-
-if [[ -z $ep ]] ; then
-    mpv "$1"
-    exit 0
 fi
 
 # printf "\n"
@@ -58,57 +65,82 @@ fi
 
 shopt -s globstar
 for file in **/* ; do
-    lowerfile=$(awk '{print tolower($0)}' <<< "$file")
-    if [[ $lowerfile =~ $SUBEXT ]] ; then
-        if [[ $lowerfile =~ $ep ]] ; then
-            if [[ -z $subtitles1 ]] ; then
-                subtitles1="$file"
-            else
-                subtitles1="$subtitles1":"$file"
-            fi
+    lowerfile=${file,,}
+    filenameext="${lowerfile##*.}"
+    filesansname="${lowerfile%."$filenameext"}"
+    if [[ $filenameext =~ $SUBEXT ]] ; then
+        subtitlecount=$(( subtitlecount + 1 ))
+        subtitlesfile="$file"
+        if [[ $filesansname == $videosansname ]] ; then
+            subtitles1="$file"
             # printf "\n"
             # printf "\n subtitles1 is $subtitles1"
             # printf "\n"
-            # break
-        elif [[ $lowerfile =~ e0*"${ep#*e}" ]] ; then
-            if [[ -z $subtitles2 ]] ; then
-                subtitles2="$file"
-            else
-                subtitles2="$subtitles2":"$file"
-            fi
+            break
+        elif [[ $filesansname =~ $videosansname ]] ; then
+            subtitles2="$file"
             # printf "\n"
             # printf "\n subtitles2 is $subtitles2"
             # printf "\n"
-            # break
-        elif [[ $lowerfile =~ e0*"${ep#*part\.}" ]] ; then
-            if [[ -z $subtitles3 ]] ; then
-                subtitles3="$file"
-            else
-                subtitles3="$subtitles3":"$file"
+            break
+        elif [[ -n "$ep" ]] ; then
+            if [[ $filesansname =~ $ep ]] ; then
+                if [[ -z $subtitles3 ]] ; then
+                    subtitles3="$file"
+                else
+                    subtitles3="$subtitles1":"$file"
+                fi
+                # printf "\n"
+                # printf "\n subtitles3 is $subtitles3"
+                # printf "\n"
+                # break
+            elif [[ $filesansname =~ e0*"${ep#*e}" ]] ; then
+                if [[ -z $subtitles4 ]] ; then
+                    subtitles4="$file"
+                else
+                    subtitles4="$subtitles4":"$file"
+                fi
+                # printf "\n"
+                # printf "\n subtitles4 is $subtitles4"
+                # printf "\n"
+                # break
+            elif [[ $filesansname =~ e0*"${ep#*part\.}" ]] ; then
+                if [[ -z $subtitles5 ]] ; then
+                    subtitles5="$file"
+                else
+                    subtitles5="$subtitles3":"$file"
+                fi
+                # printf "\n"
+                # printf "\n subtitles5 is $subtitles5"
+                # printf "\n"
+                # break
             fi
-            # printf "\n"
-            # printf "\n subtitles3 is $subtitles3"
-            # printf "\n"
-            # break
         fi
     fi
 done
 
-# s01e01 > e01 > series.1.part.1
+# only one subtitle > exact > fuzz > s01e01 > e01 > series.1.part.1
 if [[ -n $subtitles1 ]] ; then
     subtitles="$subtitles1"
 elif [[ -n $subtitles2 ]] ; then
     subtitles="$subtitles2"
 elif [[ -n $subtitles3 ]] ; then
     subtitles="$subtitles3"
+elif [[ -n $subtitles4 ]] ; then
+    subtitles="$subtitles4"
+elif [[ -n $subtitles5 ]] ; then
+    subtitles="$subtitles5"
 fi
+
+# only 1 subtitle in the directory
+(( subtitlecount == 1 )) && subtitles="$subtitlesfile"
 
 # all subtitles, s01e01 + e01 + series.1.part.1
 # subtitles="$subtitles1":"$subtitles2":"$subtitles3"
 
-printf "\n"
-printf "\n subtitles is $subtitles"
-printf "\n"
+# printf "\n"
+# printf "\n subtitles is $subtitles"
+# printf "\n"
 
 # when this script runs in terminal, select-loop activates.
 # added "--dired" as $2 to distinguish between emacs-dired and terminal
