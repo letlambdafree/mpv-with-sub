@@ -52,6 +52,7 @@ grep-print() {
 }
 
 test-print() {
+    return 0 # to test, comment this line
     printf "\n $1 is $2 \n"
 }
 
@@ -99,7 +100,7 @@ check() {
     done
 
     # only one subtitle > exact > fuzz > s01e01 > e01 > series.1.part.1
-    if (( subcount == 1 )) ; then subtitles="$subfile"
+    if (( $subcount == 1 )) ; then subtitles="$subfile"
     elif [[ -n $subtitles1 ]] ; then subtitles="$subtitles1"
     elif [[ -n $subtitles2 ]] ; then subtitles="$subtitles2"
     elif [[ -n $subtitles3 ]] ; then subtitles="$subtitles3"
