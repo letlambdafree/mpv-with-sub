@@ -31,7 +31,7 @@ fi
 
 arg1="$1"
 PS3="
-# for all, press * or 00
+# for all, press 00
 # for none, press 0
 choose : "
 SUBEXT="(srt|smi|ass|sub)"
@@ -47,31 +47,33 @@ ep3=$(expr "$lowername" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
 
 grep-print() {
     printf "\n"
-    grep --color=auto . <<< $1
+    grep --color=auto . <<< "$1"
     printf "\n"
+    retrun 0
 }
 
 test-print() {
-    return 0 # to test, comment this line
-    printf "\n $1 is $2 \n"
+    # return 0 # to test, comment this line
+    printf "\n\n"$1" is "$2" \n\n"
+    retrun 0
 }
 
 check() {
-    for file in $1 ; do
+    for file in "$1" ; do
         filename="${file##*/}"
         lowerfile=${filename,,}
         filenameext="${lowerfile##*.}"
         filesansname="${lowerfile%."$filenameext"}"
         if [[ $filenameext =~ $SUBEXT ]] ; then
-            subcount=$(( subcount + 1 ))
+            (( subcount++ ))
             subfile="$file"
             if [[ $filesansname == $videosansname ]] ; then
                 subtitles1="$file"
-                test-print subtitles1 "$subtitles1"
+                # test-print subtitles1 "$subtitles1"
                 break
             elif [[ $filesansname =~ $videosansname ]] ; then
                 subtitles2="$file"
-                test-print subtitles2 "$subtitles2"
+                # test-print subtitles2 "$subtitles2"
             elif [[ -n "$ep" ]] ; then
                 if [[ $filesansname =~ $ep|${ep/./}|${ep/e/.e} ]] ; then
                     if [[ -z $subtitles3 ]] ; then
@@ -79,21 +81,21 @@ check() {
                     else
                         subtitles3="$subtitles3":"$file"
                     fi
-                    test-print subtitles3 "$subtitles3"
+                    # test-print subtitles3 "$subtitles3"
                 elif [[ $filesansname =~ e0*"${ep#*e}" ]] ; then
                     if [[ -z $subtitles4 ]] ; then
                         subtitles4="$file"
                     else
                         subtitles4="$subtitles4":"$file"
                     fi
-                    test-print subtitles4 "$subtitles4"
+                    # test-print subtitles4 "$subtitles4"
                 elif [[ $filesansname =~ e0*"${ep#*part\.}" ]] ; then
                     if [[ -z $subtitles5 ]] ; then
                         subtitles5="$file"
                     else
                         subtitles5="$subtitles5":"$file"
                     fi
-                    test-print subtitles5 "$subtitles5"
+                    # test-print subtitles5 "$subtitles5"
                 fi
             fi
         fi
@@ -106,21 +108,23 @@ check() {
     elif [[ -n $subtitles3 ]] ; then subtitles="$subtitles3"
     elif [[ -n $subtitles4 ]] ; then subtitles="$subtitles4"
     elif [[ -n $subtitles5 ]] ; then subtitles="$subtitles5" ; fi
-    test-print subtitles "$subtitles"
+    # test-print subtitles "$subtitles"
+    retrun 0
 }
 
 play() {
-    if [[ $1 =~ /mnt/data/Downloads/sub ]] ;then
+    if [[ "$1" =~ /mnt/data/Downloads/sub ]] ;then
         mpv --sub-files="$subtitles" "$arg1"
     else
         mpv --sub-files="$videodir""$subtitles" "$arg1"
     fi
+    retrun 0
 }
 
 if [[ -n $ep1 ]] ; then ep="$ep1"
 elif [[ -n $ep2 ]] ; then ep="$ep2"
 elif [[ -n $ep3 ]] ; then ep="$ep3" ; fi
-test-print episode "$ep"
+# test-print episode "$ep"
 
 [[ -n $videodir ]] && cd "$videodir"
 
@@ -137,14 +141,14 @@ fi
 # added "--dired" as $2 to distinguish between emacs-dired and terminal
 if [[ $2 != "--dired" ]] ; then
     subtitlelines=$(sed s/:/\\n/g <<< $subtitles)
-    test-print subtitlelines "$subtitlelines"
+    # test-print subtitlelines "$subtitlelines"
     if (( $(wc -l <<< $subtitlelines) == 1 )) ; then
         selectedsubtitle="$subtitlelines"
     elif (( $(wc -l <<< $subtitlelines) > 1 )) ; then
         printf "\n"
         readarray -t arr_subtitles <<< "$subtitlelines"
         select subtitle in "${arr_subtitles[@]}" ; do
-            if [[ $REPLY =~ ^("*"|"00")$ ]] ; then
+            if [[ $REPLY =~ ^("00")$ ]] ; then
                 printf "\n"
                 printf "\n You choose all subtitles. They'll be loaded."
                 printf "\n To cycle through the available subtitles,"
