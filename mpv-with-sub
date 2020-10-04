@@ -16,7 +16,7 @@
 # more details.
 
 # I wrote this script to play video with subtitle for emacs' dired mode in EXWM
-# especially for file with series episode
+# especially for file with episodes
 
 # this script has the following options
 # 1. only one subtitle in the directory (recursive)
@@ -44,11 +44,15 @@ if [[ ! -e $1 ]] ; then
     exit 2
 fi
 
-arg1="$1"
 PS3="
 # for all, press 00
 # for none, press 0
 choose : "
+garg0="$0"
+garg1="$1"
+garg2="$2"
+PROGNAME=${0##*/}
+VERSION="0.1"
 SUBEXT="(srt|smi|ass|sub)"
 SUBDIR="/mnt/data/Downloads/sub"
 videofile="${1##*/}"
@@ -60,21 +64,36 @@ ep1=$(expr "$lowername" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
 ep2=$(expr "$lowername" : ".*\(e[0-9]\+\).*")
 ep3=$(expr "$lowername" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
 
-grep_print() {
-    printf "\n"
-    grep --color=auto . <<< "$1"
-    printf "\n"
+test_print() {
+    local arg1="$1"
+    local arg2="$2"
+    local linesnumber
+    linesnumber=$(wc -l <<< "$arg2")
+    if (( linesnumber == 1 )) ; then
+        printf "\n\n${arg1} is ${arg2}\n\n"
+    elif (( linesnumber > 1 && linesnumber < 10)) ; then
+        printf "\n\n${arg1} is \n${arg2}\n\n"
+        printf "\n"
+    else
+        printf "\n\n${arg1} is \n${arg2}\n\n"
+        printf "${linesnumber} lines"
+        printf "\n"
+    fi
     return 0
 }
 
-test_print() {
-    printf "\n\n"$1" is "$2" \n\n"
+grep_print() {
+    local arg1="$1"
+    printf "\n"
+    grep --color=auto . <<< "$arg1"
+    printf "\n"
     return 0
 }
 
 check() {
+    local arg1="$1"
     subcount=0
-    for file in $1 ; do
+    for file in $arg1 ; do # error if quote
         filename="${file##*/}"
         lowerfile=${filename,,}
         filenameext="${lowerfile##*.}"
@@ -84,11 +103,11 @@ check() {
             subfile="$file"
             if [[ $filesansname == $videosansname ]] ; then
                 subtitles1="$file"
-                # test_print subtitles1 "$subtitles1"
+                test_print subtitles1 "$subtitles1"
                 break
             elif [[ $filesansname =~ $videosansname ]] ; then
                 subtitles2="$file"
-                # test_print subtitles2 "$subtitles2"
+                test_print subtitles2 "$subtitles2"
             elif [[ -n "$ep" ]] ; then
                 if [[ $filesansname =~ $ep|${ep/./}|${ep/e/.e} ]] ; then
                     if [[ -z $subtitles3 ]] ; then
@@ -96,21 +115,21 @@ check() {
                     else
                         subtitles3="$subtitles3":"$file"
                     fi
-                    # test_print subtitles3 "$subtitles3"
+                    test_print subtitles3 "$subtitles3"
                 elif [[ $filesansname =~ e0*"${ep#*e}" ]] ; then
                     if [[ -z $subtitles4 ]] ; then
                         subtitles4="$file"
                     else
                         subtitles4="$subtitles4":"$file"
                     fi
-                    # test_print subtitles4 "$subtitles4"
+                    test_print subtitles4 "$subtitles4"
                 elif [[ $filesansname =~ e0*"${ep#*part\.}" ]] ; then
                     if [[ -z $subtitles5 ]] ; then
                         subtitles5="$file"
                     else
                         subtitles5="$subtitles5":"$file"
                     fi
-                    # test_print subtitles5 "$subtitles5"
+                    test_print subtitles5 "$subtitles5"
                 fi
             fi
         fi
@@ -123,15 +142,16 @@ check() {
     elif [[ -n $subtitles3 ]] ; then subtitles="$subtitles3"
     elif [[ -n $subtitles4 ]] ; then subtitles="$subtitles4"
     elif [[ -n $subtitles5 ]] ; then subtitles="$subtitles5" ; fi
-    # test_print subtitles "$subtitles"
-    retrun 0
+    test_print subtitles "$subtitles"
+    return 0
 }
 
 play() {
-    if [[ $1 =~ /mnt/data/Downloads/sub ]] ;then
-        mpv --sub-files="$subtitles" "$arg1"
+    local arg1="$1"
+    if [[ "$arg1" =~ /mnt/data/Downloads/sub ]] ;then
+        mpv --sub-files="$subtitles" "$garg1"
     else
-        mpv --sub-files="$videodir""$subtitles" "$arg1"
+        mpv --sub-files="$videodir""$subtitles" "$garg1"
     fi
     return 0
 }
@@ -139,7 +159,7 @@ play() {
 if [[ -n $ep1 ]] ; then ep="$ep1"
 elif [[ -n $ep2 ]] ; then ep="$ep2"
 elif [[ -n $ep3 ]] ; then ep="$ep3" ; fi
-# test_print episode "$ep"
+test_print episode "$ep"
 
 [[ -n $videodir ]] && cd "$videodir"
 
@@ -156,7 +176,7 @@ fi
 # added "--dired" as $2 to distinguish between emacs-dired and terminal
 if [[ $2 != "--dired" ]] ; then
     subtitlelines=$(sed s/:/\\n/g <<< $subtitles)
-    # test_print subtitlelines "$subtitlelines"
+    test_print subtitlelines "$subtitlelines"
     if (( $(wc -l <<< $subtitlelines) == 1 )) ; then
         selectedsubtitle="$subtitlelines"
     elif (( $(wc -l <<< $subtitlelines) > 1 )) ; then
@@ -194,4 +214,3 @@ elif [[ -n $subtitles ]] ; then
 else
     mpv "$1"
 fi
-return 0
