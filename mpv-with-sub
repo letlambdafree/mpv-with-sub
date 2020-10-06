@@ -48,17 +48,16 @@ PS3="
 # for all, press 00
 # for none, press 0
 choose : "
-garg=("$@")
 garg0="$0"
 garg1="$1"
 garg2="$2"
-PROGNAME=${garg0##*/}
+PROGNAME=${0##*/}
 VERSION="0.1"
 SUBEXT="(srt|smi|ass|sub)"
 SUBDIR="/mnt/data/Downloads/sub"
-videofile="${garg1##*/}"
-videodir="${garg1%"$videofile"}"
-videofileext="${garg1##*.}"
+videofile="${1##*/}"
+videodir="${1%"$videofile"}"
+videofileext="${1##*.}"
 videosansname="${videofile%."$videofileext"}"
 lowername=${videosansname,,}
 ep1=$(expr "$lowername" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
@@ -70,9 +69,9 @@ test_print() {
     local arg2="$2"
     local linesnumber
     linesnumber=$(wc -l <<< "$arg2")
-    if (( $linesnumber == 1 )) ; then
+    if (( linesnumber == 1 )) ; then
         printf "\n\n${arg1} is ${arg2}\n\n"
-    elif (( $linesnumber > 1 && $linesnumber < 10)) ; then
+    elif (( linesnumber > 1 && linesnumber < 10)) ; then
         printf "\n\n${arg1} is \n${arg2}\n\n"
         printf "\n"
     else
@@ -104,56 +103,45 @@ check() {
             subfile="$file"
             if [[ $filesansname == $videosansname ]] ; then
                 subtitles1="$file"
-                # test_print subtitles1 "$subtitles1"
+                test_print subtitles1 "$subtitles1"
                 break
             elif [[ $filesansname =~ $videosansname ]] ; then
                 subtitles2="$file"
-                # test_print subtitles2 "$subtitles2"
+                test_print subtitles2 "$subtitles2"
             elif [[ -n "$ep" ]] ; then
-                case $filesansname in
-                    $ep|${ep/./}|${ep/e/.e})
-                        if [[ -z $subtitles3 ]] ; then
-                            subtitles3="$file"
-                        else
-                            subtitles3="$subtitles3":"$file"
-                        fi
-                        # test_print subtitles3 "$subtitles3"
-                        ;;
-                    e0*"${ep#*e}")
-                        if [[ -z $subtitles4 ]] ; then
-                            subtitles4="$file"
-                        else
-                            subtitles4="$subtitles4":"$file"
-                        fi
-                        # test_print subtitles4 "$subtitles4"
-                        ;;
-                    e0*"${ep#*part\.}")
-                        if [[ -z $subtitles5 ]] ; then
-                            subtitles5="$file"
-                        else
-                            subtitles5="$subtitles5":"$file"
-                        fi
-                        # test_print subtitles5 "$subtitles5"
-                        ;;
-                esac
+                if [[ $filesansname =~ $ep|${ep/./}|${ep/e/.e} ]] ; then
+                    if [[ -z $subtitles3 ]] ; then
+                        subtitles3="$file"
+                    else
+                        subtitles3="$subtitles3":"$file"
+                    fi
+                    test_print subtitles3 "$subtitles3"
+                elif [[ $filesansname =~ e0*"${ep#*e}" ]] ; then
+                    if [[ -z $subtitles4 ]] ; then
+                        subtitles4="$file"
+                    else
+                        subtitles4="$subtitles4":"$file"
+                    fi
+                    test_print subtitles4 "$subtitles4"
+                elif [[ $filesansname =~ e0*"${ep#*part\.}" ]] ; then
+                    if [[ -z $subtitles5 ]] ; then
+                        subtitles5="$file"
+                    else
+                        subtitles5="$subtitles5":"$file"
+                    fi
+                    test_print subtitles5 "$subtitles5"
+                fi
             fi
         fi
     done
 
     # only one subtitle > exact > fuzz > s01e01 > e01 > series.1.part.1
-    if (( $subcount == 1 )) ; then
-        subtitles="$subfile"
-    elif [[ -n $subtitles1 ]] ; then
-        subtitles="$subtitles1"
-    elif [[ -n $subtitles2 ]] ; then
-        subtitles="$subtitles2"
-    elif [[ -n $subtitles3 ]] ; then
-        subtitles="$subtitles3"
-    elif [[ -n $subtitles4 ]] ; then
-        subtitles="$subtitles4"
-    elif [[ -n $subtitles5 ]] ; then
-        subtitles="$subtitles5"
-    fi
+    if (( $subcount == 1 )) ; then subtitles="$subfile"
+    elif [[ -n $subtitles1 ]] ; then subtitles="$subtitles1"
+    elif [[ -n $subtitles2 ]] ; then subtitles="$subtitles2"
+    elif [[ -n $subtitles3 ]] ; then subtitles="$subtitles3"
+    elif [[ -n $subtitles4 ]] ; then subtitles="$subtitles4"
+    elif [[ -n $subtitles5 ]] ; then subtitles="$subtitles5" ; fi
     test_print subtitles "$subtitles"
     return 0
 }
@@ -168,13 +156,9 @@ play() {
     return 0
 }
 
-if [[ -n $ep1 ]] ; then
-    ep="$ep1"
-elif [[ -n $ep2 ]] ; then
-    ep="$ep2"
-elif [[ -n $ep3 ]] ; then
-    ep="$ep3"
-fi
+if [[ -n $ep1 ]] ; then ep="$ep1"
+elif [[ -n $ep2 ]] ; then ep="$ep2"
+elif [[ -n $ep3 ]] ; then ep="$ep3" ; fi
 test_print episode "$ep"
 
 [[ -n $videodir ]] && cd "$videodir"
@@ -193,38 +177,28 @@ fi
 if [[ $2 != "--dired" ]] ; then
     subtitlelines=$(sed s/:/\\n/g <<< $subtitles)
     test_print subtitlelines "$subtitlelines"
-    sublinecount=$(wc -l <<< $subtitlelines)
-    if (( $sublinecount == 1 )) ; then
+    if (( $(wc -l <<< $subtitlelines) == 1 )) ; then
         selectedsubtitle="$subtitlelines"
-    elif (( $sublinecount > 1 )) ; then
+    elif (( $(wc -l <<< $subtitlelines) > 1 )) ; then
+        printf "\n"
         readarray -t arr_subtitles <<< "$subtitlelines"
         select subtitle in "${arr_subtitles[@]}" ; do
-            case $REPLY in
-                ^00$)
-                    printf "\n"
-                    printf "\n You chose all subtitles. They'll be loaded."
-                    printf "\n To cycle through the available subtitles,"
-                    printf "\n press j and J."
-                    grep_print "$subtitles"
-                    play "$subtitles"
-                    exit 0
-                    ;;
-                ^0$)
-                    printf "\n"
-                    printf "\n You chose no subtitle."
-                    printf "\n It doesn't load any external subtitle."
-                    printf "\n"
-                    mpv --sub-auto=no "$garg1"
-                    exit 0
-                    ;;
-                *)
-                    printf "\n"
-                    printf "\n Sorry, something is wrong!"
-                    printf "\n Try again."
-                    printf "\n"
-                    exit 1
-                    ;;
-            esac
+            if [[ $REPLY =~ ^("00")$ ]] ; then
+                printf "\n"
+                printf "\n You choose all subtitles. They'll be loaded."
+                printf "\n To cycle through the available subtitles,"
+                printf "\n press j and J."
+                grep_print "$subtitles"
+                play "$subtitles"
+                exit 0
+            elif [[ $REPLY =~ ^("0")$ ]] ; then
+                printf "\n"
+                printf "\n You choose no subtitle."
+                printf "\n It doesn't load any external subtitle."
+                printf "\n"
+                mpv --sub-auto=no "$1"
+                exit 0
+            fi
             selectedsubtitle="$subtitle"
             break
         done
@@ -238,5 +212,5 @@ elif [[ -n $subtitles ]] ; then
     grep_print "$subtitles"
     play "$subtitles"
 else
-    mpv "$garg1"
+    mpv "$1"
 fi
