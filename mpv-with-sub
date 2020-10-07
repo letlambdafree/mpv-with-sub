@@ -15,8 +15,8 @@
 # GNU General Public License at <http://www.gnu.org/licenses/> for
 # more details.
 
-# I wrote this script to play video with subtitle for emacs' dired mode in EXWM
-# especially for file with episodes
+# I wrote this script to play a video for emacs' dired mode in EXWM
+# especially for the file with episodes
 
 # this script has the following options
 # 1. only one subtitle in the directory (recursive)
@@ -25,10 +25,10 @@
 # 4. episode subtitle like S01E01
 # 5. in terminal, if subtitles exist, you can choose one or all or none
 
-# it searches current directory recursively first, if none, searches SUBDIR
-# if it fails to find a subtitle, it uses a mpv's original option
+# it searches a current directory recursively first, if none, searches SUBDIR
+# if it fails to find a subtitle, it uses the mpv's original option
 
-# the episode part of subtitle
+# the episode part of a subtitle
 #
 # S01E01 or S01.E01
 # E01
@@ -48,21 +48,32 @@ PS3="
 # for all, press 00
 # for none, press 0
 choose : "
+garg=("$@")
 garg0="$0"
 garg1="$1"
 garg2="$2"
-PROGNAME=${0##*/}
+PROGNAME=${garg0##*/}
 VERSION="0.1"
 SUBEXT="(srt|smi|ass|sub)"
 SUBDIR="/mnt/data/Downloads/sub"
-videofile="${1##*/}"
-videodir="${1%"$videofile"}"
-videofileext="${1##*.}"
-videosansname="${videofile%."$videofileext"}"
+videofile=${garg1##*/}
+videodir=${garg1%"$videofile"}
+videofileext=${garg1##*.}
+videosansname=${videofile%."$videofileext"}
 lowername=${videosansname,,}
-ep1=$(expr "$lowername" : ".*\(s[0-9]\+\.\?e[0-9]\+\).*")
-ep2=$(expr "$lowername" : ".*\(e[0-9]\+\).*")
-ep3=$(expr "$lowername" : ".*\(series\.\?[0-9]\+\.\?part\.\?[0-9]\+\).*")
+PATTERN1="s[0-9]\+\.\?e[0-9]\+"
+PATTERN2="e[0-9]\+"
+PATTERN3="series\.\?[0-9]\+\.\?part\.\?[0-9]\+"
+ep1=$(grep -o "$PATTERN1" <<< "$lowername")
+ep2=$(grep -o "$PATTERN2" <<< "$lowername")
+ep3=$(grep -o "$PATTERN3" <<< "$lowername")
+
+if [[ -n $ep1 ]] ; then ep="$ep1"
+elif [[ -n $ep2 ]] ; then ep="$ep2"
+elif [[ -n $ep3 ]] ; then ep="$ep3"
+else ep="" ; fi
+
+
 
 test_print() {
     local arg1="$1"
@@ -94,10 +105,10 @@ check() {
     local arg1="$1"
     subcount=0
     for file in $arg1 ; do # error if quote
-        filename="${file##*/}"
+        filename=${file##*/}
         lowerfile=${filename,,}
-        filenameext="${lowerfile##*.}"
-        filesansname="${lowerfile%."$filenameext"}"
+        filenameext=${lowerfile##*.}
+        filesansname=${lowerfile%."$filenameext"}
         if [[ $filenameext =~ $SUBEXT ]] ; then
             (( subcount++ ))
             subfile="$file"
@@ -116,32 +127,43 @@ check() {
                         subtitles3="$subtitles3":"$file"
                     fi
                     test_print subtitles3 "$subtitles3"
-                elif [[ $filesansname =~ e0*"${ep#*e}" ]] ; then
+                elif [[ $filesansname =~ e0*${ep#*e} ]] ; then
                     if [[ -z $subtitles4 ]] ; then
                         subtitles4="$file"
                     else
                         subtitles4="$subtitles4":"$file"
                     fi
                     test_print subtitles4 "$subtitles4"
-                elif [[ $filesansname =~ e0*"${ep#*part\.}" ]] ; then
+                elif [[ $filesansname =~ e0*${ep#*part\.} ]] ; then
                     if [[ -z $subtitles5 ]] ; then
                         subtitles5="$file"
                     else
                         subtitles5="$subtitles5":"$file"
                     fi
                     test_print subtitles5 "$subtitles5"
+                # else
+                #     printf "\n"
+                #     printf "\n No subtitle is here."
+                #     printf "\n Trying another source."
+                #     printf "\n"
                 fi
             fi
         fi
     done
 
     # only one subtitle > exact > fuzz > s01e01 > e01 > series.1.part.1
-    if (( $subcount == 1 )) ; then subtitles="$subfile"
+    if (( $subcount == 1 )) ; then
+        subtitles="$subfile"
     elif [[ -n $subtitles1 ]] ; then subtitles="$subtitles1"
     elif [[ -n $subtitles2 ]] ; then subtitles="$subtitles2"
     elif [[ -n $subtitles3 ]] ; then subtitles="$subtitles3"
     elif [[ -n $subtitles4 ]] ; then subtitles="$subtitles4"
-    elif [[ -n $subtitles5 ]] ; then subtitles="$subtitles5" ; fi
+    elif [[ -n $subtitles5 ]] ; then subtitles="$subtitles5"
+    else
+        printf "\n"
+        printf "\n No subtitle."
+        printf "\n"
+    fi
     test_print subtitles "$subtitles"
     return 0
 }
@@ -156,11 +178,9 @@ play() {
     return 0
 }
 
-if [[ -n $ep1 ]] ; then ep="$ep1"
-elif [[ -n $ep2 ]] ; then ep="$ep2"
-elif [[ -n $ep3 ]] ; then ep="$ep3" ; fi
-test_print episode "$ep"
 
+
+test_print episode "$ep"
 [[ -n $videodir ]] && cd "$videodir"
 
 # for recursive directories
@@ -182,8 +202,8 @@ if [[ $2 != "--dired" ]] ; then
     elif (( $(wc -l <<< $subtitlelines) > 1 )) ; then
         printf "\n"
         readarray -t arr_subtitles <<< "$subtitlelines"
-        select subtitle in "${arr_subtitles[@]}" ; do
-            if [[ $REPLY =~ ^("00")$ ]] ; then
+        select subtitle in ${arr_subtitles[@]} ; do
+            if [[ $REPLY =~ ^00$ ]] ; then
                 printf "\n"
                 printf "\n You choose all subtitles. They'll be loaded."
                 printf "\n To cycle through the available subtitles,"
@@ -191,13 +211,19 @@ if [[ $2 != "--dired" ]] ; then
                 grep_print "$subtitles"
                 play "$subtitles"
                 exit 0
-            elif [[ $REPLY =~ ^("0")$ ]] ; then
+            elif [[ $REPLY =~ ^0$ ]] ; then
                 printf "\n"
                 printf "\n You choose no subtitle."
                 printf "\n It doesn't load any external subtitle."
                 printf "\n"
                 mpv --sub-auto=no "$1"
                 exit 0
+            else
+                printf "\n"
+                printf "\n Sorry, something is wrong!"
+                printf "\n Try again."
+                printf "\n"
+                exit 1
             fi
             selectedsubtitle="$subtitle"
             break
@@ -212,5 +238,5 @@ elif [[ -n $subtitles ]] ; then
     grep_print "$subtitles"
     play "$subtitles"
 else
-    mpv "$1"
+    mpv "$garg0"
 fi
