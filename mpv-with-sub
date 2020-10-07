@@ -37,12 +37,7 @@
 ## TODO
 #
 
-if [[ ! -e $1 ]] ; then
-    printf "\n"
-    printf "\n mpv-with-sub requires a file as the first argument."
-    printf "\n"
-    exit 2
-fi
+
 
 PS3="
 # for all, press 00
@@ -55,7 +50,7 @@ garg2="$2"
 PROGNAME=${garg0##*/}
 VERSION="0.1"
 SUBEXT="(srt|smi|ass|sub)"
-SUBDIR="/mnt/data/Downloads/sub"
+SUBDIRS=("/mnt/data/Downloads/sub") # can add another subtitle directory
 videofile=${garg1##*/}
 videodir=${garg1%"$videofile"}
 videofileext=${garg1##*.}
@@ -180,6 +175,13 @@ play() {
 
 
 
+if [[ ! -e $1 ]] ; then
+    printf "\n"
+    printf "\n mpv-with-sub requires a file as the first argument."
+    printf "\n"
+    exit 2
+fi
+
 test_print episode "$ep"
 [[ -n $videodir ]] && cd "$videodir"
 
@@ -187,9 +189,13 @@ test_print episode "$ep"
 # probably need -2 deep level, otherwise so many files will be checked
 shopt -s globstar
 check "**/*"
-
 if [[ -z "$subtitles" ]] ; then
-    check "$SUBDIR/**/*"
+    for $subdir in "${SUBDIRS[@]}" ; do
+        check "$subdir/**/*"
+        if [[ -n "$subtitles" ]] ; then
+            break
+        fi
+    done
 fi
 
 # when this script runs in terminal, select-loop activates.
@@ -220,8 +226,7 @@ if [[ $2 != "--dired" ]] ; then
                 exit 0
             else
                 printf "\n"
-                printf "\n Sorry, something is wrong!"
-                printf "\n Try again."
+                printf "\n Something is wrong!"
                 printf "\n"
                 exit 1
             fi
