@@ -50,7 +50,8 @@ garg2="$2"
 PROGNAME=${garg0##*/}
 VERSION="0.1"
 SUBEXT="(srt|smi|ass|sub)"
-SUBDIRS=("/mnt/data/Downloads/sub") # can add another subtitle directory
+# add another subtitle directory
+SUBDIRS=("/mnt/data/Downloads/sub")
 videofile=${garg1##*/}
 videodir=${garg1%"$videofile"}
 videofileext=${garg1##*.}
@@ -124,11 +125,6 @@ check() {
                 elif [[ $filesansname =~ e0*${ep#*part\.} ]] ; then
                     subtitles5+=("$file")
                     test_print subtitles5 "{$subtitles5[-1]}"
-                # else
-                #     printf "\n"
-                #     printf "\n No subtitle is here."
-                #     printf "\n Trying another source."
-                #     printf "\n"
                 fi
             fi
         fi
@@ -151,6 +147,9 @@ check() {
     return 0
 }
 
+# --sub-files="subtitle1:subtitle2"
+#
+# --sub-file="$subtitle1" --sub-file="$subtitle2"
 _play() { # with --sub-files=
     local arg1=$1
     local thesubdir subfiles
