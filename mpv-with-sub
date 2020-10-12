@@ -79,10 +79,12 @@ back_trace() {
     done
     format1="\n%-${maxlength}s : %5s"
     printf "$format1" \
-           "LINENO"  "${LINENO}"
+           "LINENO" \
+           "${LINENO}"
     for key in "${!BASH_LINENO[@]}" ; do
         printf "$format1" \
-               "${FUNCNAME[$key]}" "${BASH_LINENO[$key]}"
+               "${FUNCNAME[$key]}" \
+               "${BASH_LINENO[$key]}"
     done
     printf "\n"
 }
@@ -97,7 +99,9 @@ test_print() {
                "$arg1" "$arg2"
     else (( linesnumber > 1 ))
         printf "\n%s is \n%s\n%s lines\n" \
-               "$arg1" "$arg2" $linesnumber
+               "$arg1" \
+               "$arg2" \
+               $linesnumber
     fi
     # back_trace
     return 0
