@@ -41,22 +41,21 @@
 
 PS3="
 # for all, press 00
-# for none, press 0
 choose : "
 garg=("$@")
 garg0="$0"
 garg1="$1"
 garg2="$2"
-PROGNAME=${garg0##*/}
+PROGNAME="${garg0##*/}"
 VERSION="0.1"
 SUBEXT="(srt|smi|ass|sub)"
 # add another subtitle directory
 SUBDIRS=("/mnt/data/Downloads/sub")
-videofile=${garg1##*/}
-videodir=${garg1%"$videofile"}
+videofile="${garg1##*/}"
+videodir="${garg1%"$videofile"}"
 videofileext=${garg1##*.}
-videosansname=${videofile%."$videofileext"}
-lowername=${videosansname,,}
+videosansname="${videofile%."$videofileext"}"
+lowername="${videosansname,,}"
 EP_PATTERN1="s[0-9]\+\.\?e[0-9]\+"
 EP_PATTERN2="e[0-9]\+"
 EP_PATTERN3="series\.\?[0-9]\+\.\?part\.\?[0-9]\+"
@@ -71,21 +70,34 @@ else ep="" ; fi
 
 
 
+back_trace() {
+    local maxlength format1
+    for key in "${!FUNCNAME[@]}" ; do
+        if (( "${#FUNCNAME[$key]}" > ${maxlength:-0} )) ; then
+            maxlength="${#FUNCNAME[$key]}"
+        fi
+    done
+    format1="\n%-${maxlength}s : %5s"
+    printf "$format1" "LINENO"  "${LINENO}"
+    for key in "${!BASH_LINENO[@]}" ; do
+        printf "$format1" "${FUNCNAME[$key]}" "${BASH_LINENO[$key]}"
+    done
+    printf "\n"
+}
+
 test_print() {
     local arg1="$1"
     local arg2="$2"
-    local linesnumber
+    local linesnumber format1
     linesnumber=$(wc -l <<< "$arg2")
     if (( linesnumber == 1 )) ; then
-        printf "\n\n${arg1} is ${arg2}\n\n"
+        printf "\n%s is %s\n" "$arg1" "$arg2"
     elif (( linesnumber > 1 && linesnumber < 10)) ; then
-        printf "\n\n${arg1} is \n${arg2}\n\n"
-        printf "\n"
+        printf "\n%s is \n%s\n" "$arg1" "$arg2"
     else
-        printf "\n\n${arg1} is \n${arg2}\n\n"
-        printf "${linesnumber} lines"
-        printf "\n"
+        printf "\n%s is \n%s\n%s lines\n" "$arg1" "$arg2" $linesnumber
     fi
+    # back_trace
     return 0
 }
 
@@ -150,6 +162,7 @@ check() {
 # --sub-files="subtitle1:subtitle2"
 #
 # --sub-file="$subtitle1" --sub-file="$subtitle2"
+
 _play() { # with --sub-files=
     local arg1=$1
     local thesubdir subfiles
