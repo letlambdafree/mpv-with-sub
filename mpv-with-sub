@@ -23,7 +23,7 @@
 # 2. exactly same name with video file
 # 3. fuzzy subtitle with video file
 # 4. episode subtitle like S01E01
-# 5. in terminal, if subtitles exist, you can choose one or all or none
+# 5. in terminal, if subtitles exist, you can choose one or all
 
 # it searches a current directory recursively first, if none, searches SUBDIR
 # if it fails to find a subtitle, it uses the mpv's original option
@@ -156,7 +156,6 @@ check() {
 }
 
 # --sub-files="subtitle1:subtitle2"
-#
 # --sub-file="$subtitle1" --sub-file="$subtitle2"
 
 _play() { # with --sub-files=
@@ -241,13 +240,6 @@ if [[ $garg2 != --dired ]] ; then
                 grep_print "${subtitles[@]}"
                 play "${subtitles[@]}"
                 exit 0
-            elif [[ $REPLY =~ ^0$ ]] ; then
-                printf "\n\n %s\n" "You choose no subtitle."
-                mpv --sub-auto=no "$garg1"
-                exit 0
-            # else
-            #   printf "\n\n %s\n" "Something is wrong!"
-            #     exit 1
             fi
             selected="$subtitle"
             break
