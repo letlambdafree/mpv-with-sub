@@ -103,9 +103,7 @@ test_print() {
 
 grep_print() {
     local arg1="$1"
-    printf "\n"
-    grep --color=auto . <<< "$arg1"
-    printf "\n"
+    printf "\n \e[1;31m%s\e[0m\n\n" "$arg1"
     return 0
 }
 
@@ -113,28 +111,28 @@ check() {
     local arg1="$1"
     subcount=0
     for file in $arg1 ; do # error if quote
-        filename=${file##*/}
-        lowerfile=${filename,,}
+        filename="${file##*/}"
+        lowerfile="${filename,,}"
         filenameext=${lowerfile##*.}
-        filesansname=${lowerfile%."$filenameext"}
+        filesansname="${lowerfile%."$filenameext"}"
         if [[ $filenameext =~ $SUBEXT ]] ; then
             (( subcount++ ))
             subfile="$file"
-            if [[ $filesansname == $videosansname ]] ; then
+            if [[ "$filesansname" == "$videosansname" ]] ; then
                 subtitles1="$file"
                 test_print subtitles1 "$subtitles1"
                 break
-            elif [[ $filesansname =~ $videosansname ]] ; then
+            elif [[ "$filesansname" =~ "$videosansname" ]] ; then
                 subtitles2+=("$file")
                 test_print subtitles2 "${subtitles2[-1]}"
             elif [[ -n "$ep" ]] ; then
-                if [[ $filesansname =~ $ep|${ep/./}|${ep/e/.e} ]] ; then
+                if [[ "$filesansname" =~ $ep|${ep/./}|${ep/e/.e} ]] ; then
                     subtitles3+=("$file")
                     test_print subtitles3 "${subtitles3[-1]}"
-                elif [[ $filesansname =~ e0*${ep#*e} ]] ; then
+                elif [[ "$filesansname" =~ e0*${ep#*e} ]] ; then
                     subtitles4+=("$file")
                     test_print subtitles4 "${subtitles4[-1]}"
-                elif [[ $filesansname =~ e0*${ep#*part\.} ]] ; then
+                elif [[ "$filesansname" =~ e0*${ep#*part\.} ]] ; then
                     subtitles5+=("$file")
                     test_print subtitles5 "{$subtitles5[-1]}"
                 fi
@@ -151,9 +149,7 @@ check() {
     elif [[ -n $subtitles4 ]] ; then subtitles=("${subtitles4[@]}")
     elif [[ -n $subtitles5 ]] ; then subtitles=("${subtitles5[@]}")
     else
-        printf "\n"
-        printf "\n No subtitle."
-        printf "\n"
+        printf "\n \e[1;31m%s\e[0m\n\n" "No subtitle."
     fi
     test_print subtitles "${subtitles[@]}"
     return 0
@@ -210,18 +206,17 @@ play() { # with array --sub-file=
 
 
 if [[ ! -e $garg1 ]] ; then
-    printf "\n"
-    printf "\n mpv-with-sub requires a file as the first argument."
-    printf "\n"
+    printf "\n \e[1;31m%s\e[0m\n\n" \
+           "mpv-with-sub requires a file as the first argument."
     exit 2
 fi
 
 test_print episode "$ep"
-[[ -n $videodir ]] && cd "$videodir"
 
 # for recursive directories
 # probably need -2 deep level, otherwise so many files will be checked
 shopt -s globstar
+[[ -n $videodir ]] && cd "$videodir"
 check "**/*"
 if [[ -z $subtitles ]] ; then
     for subdir in "${SUBDIRS[@]}" ; do
@@ -241,22 +236,17 @@ if [[ $garg2 != --dired ]] ; then
         printf "\n"
         select subtitle in "${subtitles[@]}" ; do
             if [[ $REPLY =~ ^00$ ]] ; then
-                printf "\n"
-                printf "\n You choose all subtitles. They'll be loaded."
-                printf "\n"
+                printf "\n\n %s\n" \
+                "You choose all subtitles. They'll be loaded."
                 grep_print "${subtitles[@]}"
                 play "${subtitles[@]}"
                 exit 0
             elif [[ $REPLY =~ ^0$ ]] ; then
-                printf "\n"
-                printf "\n You choose no subtitle."
-                printf "\n"
+                printf "\n\n %s\n" "You choose no subtitle."
                 mpv --sub-auto=no "$garg1"
                 exit 0
             # else
-            #     printf "\n"
-            #     printf "\n Something is wrong!"
-            #     printf "\n"
+            #   printf "\n\n %s\n" "Something is wrong!"
             #     exit 1
             fi
             selected="$subtitle"
