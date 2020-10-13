@@ -65,8 +65,7 @@ ep3=$(grep -o "$EP_PATTERN3" <<< "$lowername")
 
 if [[ -n $ep1 ]] ; then ep="$ep1"
 elif [[ -n $ep2 ]] ; then ep="$ep2"
-elif [[ -n $ep3 ]] ; then ep="$ep3"
-else ep="" ; fi
+elif [[ -n $ep3 ]] ; then ep="$ep3" ; fi
 
 
 
@@ -78,13 +77,11 @@ back_trace() {
         fi
     done
     format1="\n%-${maxlength}s : %5s"
-    printf "$format1" \
-           "LINENO" \
-           "${LINENO}"
+    # printf "$format1" \
+    #        "LINENO" "${LINENO}"
     for key in "${!BASH_LINENO[@]}" ; do
         printf "$format1" \
-               "${FUNCNAME[$key]}" \
-               "${BASH_LINENO[$key]}"
+               "${FUNCNAME[$key]}" "${BASH_LINENO[$key]}"
     done
     printf "\n"
 }
@@ -92,17 +89,10 @@ back_trace() {
 test_print() {
     local arg1="$1"
     local arg2="$2"
-    local linesnumber
-    linesnumber=$(wc -l <<< "$arg2")
-    if (( linesnumber == 1 )) ; then
-        printf "\n%s is %s\n" \
-               "$arg1" "$arg2"
-    else (( linesnumber > 1 ))
-        printf "\n%s is \n%s\n%s lines\n" \
-               "$arg1" \
-               "$arg2" \
-               $linesnumber
-    fi
+    printf "\n\e[1;38;5;220m%s\n\e[1;38;5;240m%s\e[0m" \
+           "$arg1" "$arg2"
+    printf "\n\e[1;38;5;40m%s lines\e[0m\n" \
+           $linesnumber
     # back_trace
     return 0
 }
@@ -163,10 +153,7 @@ check() {
     return 0
 }
 
-# --sub-files="subtitle1:subtitle2"
-# --sub-file="$subtitle1" --sub-file="$subtitle2"
-
-_play() { # with --sub-files=
+_play() { # with --sub-files="subtitle1:subtitle2
     local arg1=$1
     local thesubdir subfiles
     for subdir in "${SUBDIRS[@]}" ; do
@@ -188,7 +175,7 @@ _play() { # with --sub-files=
     return 0
 }
 
-play() { # with array --sub-file=
+play() { # with array --sub-file="$subtitle1" --sub-file="$subtitle2"
     local arg1=$1
     local thesubdir subfiles
     for subdir in "${SUBDIRS[@]}" ; do
@@ -240,17 +227,23 @@ if [[ $garg2 != --dired ]] ; then
     if (( ${#subtitles[@]} == 1 )) ; then
         selected="$subtitles"
     elif (( ${#subtitles[@]} > 1 )) ; then
-        printf "\n"
+        printf "\n" # needed
         select subtitle in "${subtitles[@]}" ; do
             if [[ $REPLY =~ ^00$ ]] ; then
                 printf "\n\n %s\n" \
-                "You choose all subtitles. They'll be loaded."
+                "You choose all subtitles."
                 grep_print "${subtitles[@]}"
                 play "${subtitles[@]}"
                 exit 0
+            elif [[ -n "$subtitle" ]] ; then
+                selected="$subtitle"
+                break
+            else
+                printf "\n \e[1;31m%s\e[0m\n" \
+                       "Something is wrong!"
+                back_trace
+                exit 1
             fi
-            selected="$subtitle"
-            break
         done
     fi
 fi
