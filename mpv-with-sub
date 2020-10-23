@@ -89,6 +89,7 @@ back_trace() {
 test_print() {
     local arg1="$1"
     local arg2="$2"
+    linesnumber=$(wc -l <<< "$arg2")
     printf "\n\e[1;38;5;220m%s\n\e[1;38;5;240m%s\e[0m" \
            "$arg1" "$arg2"
     printf "\n\e[1;38;5;40m%s lines\e[0m\n" \
