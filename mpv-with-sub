@@ -39,55 +39,55 @@
 
 
 
-PS3="
+PS3='
 # for all, press 00
-choose : "
-garg=( "$@" )
-garg0="$0"
-garg1="$1"
-garg2="$2"
-PROGNAME="${garg0##*/}"
-BASH_VERSION='5.0.18(1)-release'
-VERSION=0.1
-SUBEXT='(srt|smi|ass|sub)'
+choose : '
+g_arg=( "$@" )
+g_arg0="$0"
+g_arg1="$1"
+g_arg2="$2"
+SCRIPT_PATH=$(realpath "$g_arg0")
+SCRIPT_DIR="${SCRIPT_PATH%/*}"
+SCRIPT_NAME="${SCRIPT_PATH##*/}"
+SCRIPT_VERSION=0.1
+SUB_EXT='(srt|smi|ass|sub)'
 #
 # add another subtitle directory
 #
-SUBDIRS=( '/mnt/data/Downloads/sub' )
-videofile="${garg1##*/}"
-videodir="${garg1%$videofile}"
-videofileext=${garg1##*.}
-videosansname="${videofile%.$videofileext}"
-lowername="${videosansname,,}"
-EP_PATTERN1='s[0-9]\+\.\?e[0-9]\+'
-EP_PATTERN2='e[0-9]\+'
-EP_PATTERN3='series\.\?[0-9]\+\.\?part\.\?[0-9]\+'
-ep1=$(grep -o "$EP_PATTERN1" <<< $lowername)
-ep2=$(grep -o "$EP_PATTERN2" <<< $lowername)
-ep3=$(grep -o "$EP_PATTERN3" <<< $lowername)
-
-if [[ -n $ep1 ]] ; then
-    ep="$ep1"
-elif [[ -n $ep2 ]] ; then
-    ep="$ep2"
-elif [[ -n $ep3 ]] ; then
-    ep="$ep3"
-fi
-
+SUB_DIR=( '/mnt/data/Downloads/sub' )
+video_file="${g_arg1##*/}"
+video_dir="${g_arg1%$video_file}"
+video_file_ext=${g_arg1##*.}
+video_sans_name="${video_file%.$video_file_ext}"
+lower_name="${video_sans_name,,}"
+G1='s[0-9]\+\.\?e[0-9]\+'
+G2='e[0-9]\+'
+G3='series\.\?[0-9]\+\.\?part\.\?[0-9]\+'
+ep1=$(grep -o "$G1" <<< $lower_name)
+ep2=$(grep -o "$G2" <<< $lower_name)
+ep3=$(grep -o "$G3" <<< $lower_name)
+ep="${ep1:-${ep2:-$ep3}}" # need test
+# if [[ -n $ep1 ]] ; then
+#     ep="$ep1"
+# elif [[ -n $ep2 ]] ; then
+#     ep="$ep2"
+# elif [[ -n $ep3 ]] ; then
+#     ep="$ep3"
+# fi
 
 
 back_trace() {
-    local maxlength format1
+    local max_length f1
     for key in "${!FUNCNAME[@]}" ; do
-        if (( ${#FUNCNAME[$key]} > ${maxlength:-0} )) ; then
-            maxlength=${#FUNCNAME[$key]}
+        if (( ${#FUNCNAME[$key]} > ${max_length:-0} )) ; then
+            max_length=${#FUNCNAME[$key]}
         fi
     done
-    format1="\n%-${maxlength}s : %5s"
-    # printf "$format1" \
+    f1="\n%-${max_length}s : %5s"
+    # printf "$f1" \
     #        "LINENO" ${LINENO}
     for key in ${!BASH_LINENO[@]} ; do
-        printf "$format1" \
+        printf "$f1" \
                ${FUNCNAME[$key]} ${BASH_LINENO[$key]}
     done
     printf "\n"
@@ -96,11 +96,32 @@ back_trace() {
 test_print() {
     local arg1="$1"
     local arg2="$2"
-    linesnumber=$(wc -l <<< $arg2)
-    printf '\n\e[1;38;5;220m%s\n\e[1;38;5;240m%s\e[0m' \
-           "$arg1" "$arg2"
-    printf '\n\e[1;38;5;40m%s lines\e[0m\n' \
-           $linesnumber
+    local arg3="$3"
+    local items_number=0
+    local f1='\n\e[1;38;5;40m%s item %s\e[0m\n'
+    local f2='\n\e[1;38;5;40m%s items %s\e[0m\n'
+    local f3='\n\e[1;38;5;220m%s\n\e[1;38;5;240m%s\e[0m'
+    printf "$f3" \
+           "${FUNCNAME[1]}'s $arg1" \
+           "$arg2"
+    if (( $arg3 )); then
+        if (( $arg3 == 1 )); then
+            printf "$f1" $arg3
+        elif (( $arg3 > 1 )); then
+            printf "$f2" $arg3
+        else
+            printf "$f1" no
+        fi
+    else
+        [[ -n $arg2 ]] && items_number=$(wc -l <<< $arg2)
+        if (( $items_number == 1 )); then
+            printf "$f1" $items_number
+        elif (( $items_number > 1 )); then
+            printf "$f2" $items_number
+        else
+            printf "$f1" no
+        fi
+    fi
     # back_trace
     return 0
 }
@@ -114,30 +135,30 @@ grep_print() {
 
 check() {
     local arg1="$1"
-    subcount=0
+    sub_count=0
     for file in $arg1 ; do # error if quote
-        filename="${file##*/}"
-        lowerfile="${filename,,}"
-        filenameext=${lowerfile##*.}
-        filesansname="${lowerfile%.$filenameext}"
-        if [[ $filenameext =~ $SUBEXT ]] ; then
-            ((subcount++))
+        file_name="${file##*/}"
+        lower_file="${file_name,,}"
+        file_name_ext=${lower_file##*.}
+        file_sans_name="${lower_file%.$file_name_ext}"
+        if [[ $file_name_ext =~ $SUB_EXT ]] ; then
+            ((sub_count++))
             subfile="$file"
-            if [[ $filesansname == $videosansname ]] ; then
+            if [[ $file_sans_name == $video_sans_name ]] ; then
                 subtitles1="$file"
                 test_print subtitles1 "$subtitles1"
                 break
-            elif [[ $filesansname =~ $videosansname ]] ; then
+            elif [[ $file_sans_name =~ $video_sans_name ]] ; then
                 subtitles2+=( "$file" )
                 test_print subtitles2 "${subtitles2[-1]}"
             elif [[ -n "$ep" ]] ; then
-                if [[ $filesansname =~ $ep|${ep/./}|${ep/e/.e} ]] ; then
+                if [[ $file_sans_name =~ $ep|${ep/./}|${ep/e/.e} ]] ; then
                     subtitles3+=( "$file" )
                     test_print subtitles3 "${subtitles3[-1]}"
-                elif [[ $filesansname =~ e0*${ep#*e} ]] ; then
+                elif [[ $file_sans_name =~ e0*${ep#*e} ]] ; then
                     subtitles4+=( "$file" )
                     test_print subtitles4 "${subtitles4[-1]}"
-                elif [[ $filesansname =~ e0*${ep#*part\.} ]] ; then
+                elif [[ $file_sans_name =~ e0*${ep#*part\.} ]] ; then
                     subtitles5+=( "$file" )
                     test_print subtitles5 "${subtitles5[-1]}"
                 fi
@@ -147,7 +168,7 @@ check() {
     #
     # only one subtitle > exact > fuzz > s01e01 > e01 > series.1.part.1
     #
-    if (( $subcount == 1 )) ; then
+    if (( $sub_count == 1 )) ; then
         subtitles="$subfile"
     elif [[ -n $subtitles1 ]] ; then
         subtitles="$subtitles1"
@@ -172,10 +193,10 @@ _play() {
     # with --sub-files="subtitle1:subtitle2
     #
     local arg1="$1"
-    local thesubdir subfiles
-    for subdir in "${SUBDIRS[@]}" ; do
+    local the_subdir subfiles
+    for subdir in "${SUB_DIR[@]}" ; do
         if [[ $arg1 =~ $subdir ]] ;then
-            thesubdir="$subdir"
+            the_subdir="$subdir"
             break
         fi
     done
@@ -183,10 +204,10 @@ _play() {
         subfiles+="$subtitle"":" # need " "?
     done
     subfiles="${subfiles%:}"
-    if [[ $arg1 =~ $thesubdir ]] ; then
-        mpv --sub-files="$subfiles" "$garg1"
+    if [[ $arg1 =~ $the_subdir ]] ; then
+        mpv --sub-files="$subfiles" "$g_arg1"
     else
-        mpv --sub-files="$videodir""$subfiles" "$garg1"
+        mpv --sub-files="$video_dir""$subfiles" "$g_arg1"
     fi
     return 0
 }
@@ -196,29 +217,29 @@ play() {
     # with array --sub-file="$subtitle1" --sub-file="$subtitle2"
     #
     local arg1="$1"
-    local thesubdir subfiles
-    for subdir in "${SUBDIRS[@]}" ; do
+    local the_subdir subfiles
+    for subdir in "${SUB_DIR[@]}" ; do
         if [[ $arg1 =~ $subdir ]] ;then
-            thesubdir="$subdir"
+            the_subdir="$subdir"
             break
         fi
     done
-    if [[ $arg1 =~ $thesubdir ]] ;then
+    if [[ $arg1 =~ $the_subdir ]] ;then
         for subtitle in "${subtitles[@]}" ; do
             subfiles+=( --sub-file="$subtitle" )
         done
     else
         for subtitle in "${subtitles[@]}" ; do
-            subfiles+=( --sub-file="$videodir""$subtitle" )
+            subfiles+=( --sub-file="$video_dir""$subtitle" )
         done
     fi
-    mpv "${subfiles[@]}" "$garg1"
+    mpv "${subfiles[@]}" "$g_arg1"
     return 0
 }
 
 
 
-if [[ ! -e $garg1 ]] ; then
+if [[ ! -e $g_arg1 ]] ; then
     printf '\n \e[1;31m%s\e[0m\n\n' \
            'mpv-with-sub requires a file as the first argument.'
     exit 2
@@ -229,10 +250,10 @@ test_print episode "$ep"
 # probably need -2 deep level, otherwise so many files will be checked
 #
 shopt -s globstar
-[[ -n $videodir ]] && cd "$videodir"
+[[ -n $video_dir ]] && cd "$video_dir"
 check "**/*"
 if [[ -z $subtitles ]] ; then
-    for subdir in "${SUBDIRS[@]}" ; do
+    for subdir in "${SUB_DIR[@]}" ; do
         check "$subdir/**/*"
         if [[ -n $subtitles ]] ; then
             break
@@ -243,7 +264,7 @@ fi
 # when this script runs in terminal, select-loop activates.
 # added "--dired" as $2 to distinguish between emacs-dired and terminal
 #
-if [[ $garg2 != --dired ]] ; then
+if [[ $g_arg2 != --dired ]] ; then
     if (( ${#subtitles[@]} == 1 )) ; then
         selected="$subtitles"
     elif (( ${#subtitles[@]} > 1 )) ; then
@@ -275,5 +296,5 @@ elif [[ -n $subtitles ]] ; then
     grep_print "${subtitles[@]}"
     play "${subtitles[@]}"
 else
-    mpv "$garg1"
+    mpv "$g_arg1"
 fi
