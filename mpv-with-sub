@@ -38,9 +38,10 @@
 #
 
 
-
+shopt -s globstar # Allow ** for recursive matches
+set -u # avoid a undeclared variable
 PS3='
-# for all, press 00
+# 00 for all
 choose : '
 g_arg=( "$@" )
 g_arg0="$0"
@@ -91,7 +92,8 @@ back_trace() {
     #        "LINENO" ${LINENO}
     for key in ${!BASH_LINENO[@]}; do
         printf "$f1" \
-               ${FUNCNAME[$key]} ${BASH_LINENO[$key]}
+               ${FUNCNAME[$key]} \
+               ${BASH_LINENO[$key]}
     done
     printf "\n"
 }
@@ -120,14 +122,14 @@ test_print() {
 
 grep_print() {
     local arg1="$1"
-    printf '\n \e[1;31m%s\e[0m\n\n' \
-           "$arg1"
+    local p1='\n\e[1;38;5;130m %s\e[0m\n\n'
+    printf "$p1" "$arg1"
     return 0
 }
 
 check() {
     local arg1="$1"
-    sub_count=0
+    local sub_count
     for file in $arg1; do # error if quote
         file_name="${file##*/}"
         lower_file="${file_name,,}"
@@ -241,7 +243,6 @@ test_print episode "$ep"
 # for recursive directories
 # probably need -2 deep level, otherwise so many files will be checked
 #
-shopt -s globstar
 [[ -n $video_dir ]] && cd "$video_dir"
 check "**/*"
 if [[ -z $subtitles ]]; then
