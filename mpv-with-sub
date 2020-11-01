@@ -46,7 +46,7 @@ choose : '
 g_arg=( "$@" )
 g_arg0="$0"
 g_arg1="$1"
-g_arg2="$2"
+g_arg2="${2:-}"
 SCRIPT_PATH=$(realpath "$g_arg0")
 SCRIPT_DIR="${SCRIPT_PATH%/*}"
 SCRIPT_NAME="${SCRIPT_PATH##*/}"
@@ -60,16 +60,16 @@ video_file="${g_arg1##*/}"
 video_dir="${g_arg1%$video_file}"
 video_file_ext=${g_arg1##*.}
 video_sans_name="${video_file%.$video_file_ext}"
-lower_name="${video_sans_name,,}"
+video_lower_name="${video_sans_name,,}"
 #
 # basic regex escape ‘\?’, ‘\+’, ‘\|’, ‘\{’, '\}', ‘\(’, and ‘\)’
 #
 G1='s[0-9]\+\.\?e[0-9]\+'
 G2='e[0-9]\+'
 G3='series\.\?[0-9]\+\.\?part\.\?[0-9]\+'
-ep1=$(grep -o "$G1" <<< $lower_name)
-ep2=$(grep -o "$G2" <<< $lower_name)
-ep3=$(grep -o "$G3" <<< $lower_name)
+ep1=$(grep -o "$G1" <<< $video_lower_name)
+ep2=$(grep -o "$G2" <<< $video_lower_name)
+ep3=$(grep -o "$G3" <<< $video_lower_name)
 ep="${ep1:-${ep2:-$ep3}}" # need test
 # if [[ -n $ep1 ]]; then
 #     ep="$ep1"
@@ -99,7 +99,7 @@ back_trace() {
 }
 test_print() {
     local arg1="$1"
-    local arg2="$2"
+    local arg2="${2:-}"
     local items_number=0
     local p1='\n\e[1;38;5;40m%s item %s\e[0m\n'
     local p2='\n\e[1;38;5;40m%s items %s\e[0m\n'
@@ -129,7 +129,13 @@ grep_print() {
 
 check() {
     local arg1="$1"
-    local sub_count
+    local sub_count=0
+    local subtitles1=
+    local subtitles2=()
+    local subtitles3=()
+    local subtitles4=()
+    local subtitles5=()
+    local file_name lower_file file_name_ext file_sans_name
     for file in $arg1; do # error if quote
         file_name="${file##*/}"
         lower_file="${file_name,,}"
@@ -166,19 +172,20 @@ check() {
         subtitles="$subfile"
     elif [[ -n $subtitles1 ]]; then
         subtitles="$subtitles1"
-    elif [[ -n $subtitles2 ]]; then
+    elif [[ -n ${subtitles2[@]} ]]; then # need ${[@]} not $subtitles2
         subtitles=( "${subtitles2[@]}" )
-    elif [[ -n $subtitles3 ]]; then
+    elif [[ -n ${subtitles3[@]} ]]; then
         subtitles=( "${subtitles3[@]}" )
-    elif [[ -n $subtitles4 ]]; then
+    elif [[ -n ${subtitles4[@]} ]]; then
         subtitles=( "${subtitles4[@]}" )
-    elif [[ -n $subtitles5 ]]; then
+    elif [[ -n ${subtitles5[@]} ]]; then
         subtitles=( "${subtitles5[@]}" )
     else
-        printf '\n \e[1;31m%s\e[0m\n\n' \
-               'No subtitle.'
+        printf '\n \e[1;31m%s\n\n %s\e[0m\n\n' \
+               "No subtitle in" \
+               "$PWD"
     fi
-    test_print subtitles "${subtitles[@]}"
+    test_print subtitles "${subtitles[*]}"
     return 0
 }
 
@@ -195,7 +202,7 @@ _play() {
         fi
     done
     for subtitle in "${subtitles[@]}"; do
-        subfiles+="$subtitle"":" # need " "?
+        subfiles+="$subtitle":
     done
     subfiles="${subfiles%:}"
     if [[ $arg1 =~ $the_subdir ]]; then
@@ -211,7 +218,8 @@ play() {
     # with array --sub-file="$subtitle1" --sub-file="$subtitle2"
     #
     local arg1="$1"
-    local the_subdir subfiles
+    local the_subdir=
+    local subfiles
     for subdir in "${SUB_DIR[@]}"; do
         if [[ $arg1 =~ $subdir ]] ;then
             the_subdir="$subdir"
@@ -231,8 +239,47 @@ play() {
     return 0
 }
 
+check_title_with_ep() {
+    #
+    # close to video file name as possible as we can
+    #
+    # ab.cd.ef.s01.e01.group.mkv
+    # ab.cd.s01.e01.group.srt
+    # cd.s01.e01.group.srt
+    # ef.s01.e01.group.srt
+    #
+    #
+    local title_without_ep title_wc_w rating_sub
+    if (( ${subtitles[@]} > 1 )); then
+        video_part_name="${video_lower_name%%$ep}"
+        video_part_name=$(sed 's/\.//g' <<< "$video_part_name")
+        title_wc_w=$(wc -w <<< "$video_part_name")
+        readarray -d ' ' -t arr_part <<< "$video_part_name"
+        for sub in "${subtitles[@]}"; do
+            for part in "${arr_part[@]}"; do
+                if [[ $sub =~ $part ]]; then
+                    ((c++))
+                fi
+            done
+            if (( $c == $title_wc_w )); then
+                retrun 1
+            fi
+            rating_sub+==$(printf "${rating_sub:+\n}%s %s" \
+                                  $c \
+                                  "$sub")
+            c=0
+        done
+        rating_sub=$(sort <<< $rating_sub \
+                         | sed 's/^[0-9]\+ //')
+
+        readarray -t subtitles <<< "$rating_sub"
+    fi
+    return 0
+}
 
 
+
+subtitles=
 if [[ ! -e $g_arg1 ]]; then
     printf '\n \e[1;31m%s\e[0m\n\n' \
            'mpv-with-sub requires a file as the first argument.'
@@ -247,14 +294,15 @@ test_print episode "$ep"
 check "**/*"
 if [[ -z $subtitles ]]; then
     for subdir in "${SUB_DIR[@]}"; do
-        check "$subdir/**/*"
+        cd "$subdir"
+        check "**/*"
         if [[ -n $subtitles ]]; then
             break
         fi
     done
 fi
 #
-# when this script runs in terminal, select-loop activates.
+# when this script runs in terminal, select() activates.
 # added "--dired" as $2 to distinguish between emacs-dired and terminal
 #
 if [[ $g_arg2 != --dired ]]; then
@@ -265,7 +313,7 @@ if [[ $g_arg2 != --dired ]]; then
         select subtitle in "${subtitles[@]}"; do
             if [[ $REPLY =~ ^00$ ]]; then
                 printf '\n\n %s\n' \
-                'You choose all subtitles.'
+                       'You choose all subtitles.'
                 grep_print "${subtitles[@]}"
                 play "${subtitles[@]}"
                 exit 0
@@ -286,6 +334,7 @@ if [[ -n $selected ]]; then
     subtitles="$selected"
     play "$subtitles"
 elif [[ -n $subtitles ]]; then
+    # check_title_with_ep
     grep_print "${subtitles[@]}"
     play "${subtitles[@]}"
 else
