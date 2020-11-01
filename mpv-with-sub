@@ -120,7 +120,7 @@ test_print() {
     return 0
 }
 
-grep_print() {
+playing_print() {
     local arg1="$1"
     local p1='\n\e[1;38;5;130m %s\e[0m\n\n'
     printf "$p1" "$arg1"
@@ -146,21 +146,21 @@ check() {
             subfile="$file"
             if [[ $file_sans_name == $video_sans_name ]]; then
                 subtitles1="$file"
-                test_print subtitles1 "$subtitles1"
+                # test_print subtitles1 "$subtitles1"
                 break
             elif [[ $file_sans_name =~ $video_sans_name ]]; then
                 subtitles2+=( "$file" )
-                test_print subtitles2 "${subtitles2[-1]}"
+                # test_print subtitles2 "${subtitles2[-1]}"
             elif [[ -n "$ep" ]]; then
                 if [[ $file_sans_name =~ $ep|${ep/./}|${ep/e/.e} ]]; then
                     subtitles3+=( "$file" )
-                    test_print subtitles3 "${subtitles3[-1]}"
+                    # test_print subtitles3 "${subtitles3[-1]}"
                 elif [[ $file_sans_name =~ e0*${ep#*e} ]]; then
                     subtitles4+=( "$file" )
-                    test_print subtitles4 "${subtitles4[-1]}"
+                    # test_print subtitles4 "${subtitles4[-1]}"
                 elif [[ $file_sans_name =~ e0*${ep#*part\.} ]]; then
                     subtitles5+=( "$file" )
-                    test_print subtitles5 "${subtitles5[-1]}"
+                    # test_print subtitles5 "${subtitles5[-1]}"
                 fi
             fi
         fi
@@ -239,53 +239,82 @@ play() {
     return 0
 }
 
-check_title_with_ep() {
+order_subtitle() {
     #
-    # close to video file name as possible as we can
+    # accuracy as possible as we can
     #
-    # ab.cd.ef.s01.e01.group.mkv
-    # ab.cd.s01.e01.group.srt
-    # cd.s01.e01.group.srt
-    # ef.s01.e01.group.srt
-    #
-    #
-    local title_without_ep title_wc_w rating_sub
-    if (( ${subtitles[@]} > 1 )); then
-        video_part_name="${video_lower_name%%$ep}"
-        video_part_name=$(sed 's/\.//g' <<< "$video_part_name")
-        title_wc_w=$(wc -w <<< "$video_part_name")
+    local video_part_name rating_sub
+    local c=0
+    if (( ${#subtitles[@]} > 1 )); then
+        # test_print ep "$ep"
+        # test_print video_lower_name "$video_lower_name"
+        video_part_name=$(sed "s/$ep.*//" <<< "$video_lower_name")
+        # test_print video_part_name "$video_part_name"
+        video_part_name=$(sed 's/\./ /g' <<< "$video_part_name")
+        # test_print video_part_name "$video_part_name"
         readarray -d ' ' -t arr_part <<< "$video_part_name"
+        # test_print arr_part "${arr_part[*]}"
         for sub in "${subtitles[@]}"; do
             for part in "${arr_part[@]}"; do
-                if [[ $sub =~ $part ]]; then
-                    ((c++))
-                fi
+                [[ ${sub,,} =~ $part ]] && ((c++))
             done
-            if (( $c == $title_wc_w )); then
-                retrun 1
-            fi
-            rating_sub+==$(printf "${rating_sub:+\n}%s %s" \
+            rating_sub+=$(printf "${rating_sub:+\n}%s %s" \
                                   $c \
                                   "$sub")
             c=0
         done
-        rating_sub=$(sort <<< $rating_sub \
-                         | sed 's/^[0-9]\+ //')
+        # test_print rating_sub "$rating_sub"
+        rating_sub=$(sort -r <<< $rating_sub | sed 's/^[0-9]\+ //')
 
+        # test_print rating_sub "$rating_sub"
+        # sleep 100
         readarray -t subtitles <<< "$rating_sub"
+    fi
+    return 0
+}
+
+terminal_select () {
+    #
+    # when this script runs in terminal, select() activates.
+    # added "--dired" as $2 to distinguish between emacs-dired and terminal
+    #
+    declare -g selected
+    if [[ $g_arg2 != --dired ]]; then
+        if (( ${#subtitles[@]} == 1 )); then
+            selected="$subtitles"
+        elif (( ${#subtitles[@]} > 1 )); then
+            printf '\n' # needed
+            select subtitle in "${subtitles[@]}"; do
+                if [[ $REPLY =~ ^00$ ]]; then
+                    printf '\n\n %s\n' \
+                           'You choose all subtitles.'
+                    playing_print "${subtitles[@]}"
+                    play "${subtitles[@]}"
+                    exit 0
+                elif [[ -n $subtitle ]]; then
+                    selected="$subtitle"
+                    break
+                else
+                    printf '\n \e[1;31m%s\e[0m\n' \
+                           'Something is wrong!'
+                    back_trace
+                    exit 1
+                fi
+            done
+        fi
     fi
     return 0
 }
 
 
 
-subtitles=
+declare -g subtitles=
 if [[ ! -e $g_arg1 ]]; then
     printf '\n \e[1;31m%s\e[0m\n\n' \
            'mpv-with-sub requires a file as the first argument.'
     exit 2
 fi
-test_print episode "$ep"
+# test_print episode "$ep"
 #
 # for recursive directories
 # probably need -2 deep level, otherwise so many files will be checked
@@ -301,41 +330,14 @@ if [[ -z $subtitles ]]; then
         fi
     done
 fi
-#
-# when this script runs in terminal, select() activates.
-# added "--dired" as $2 to distinguish between emacs-dired and terminal
-#
-if [[ $g_arg2 != --dired ]]; then
-    if (( ${#subtitles[@]} == 1 )); then
-        selected="$subtitles"
-    elif (( ${#subtitles[@]} > 1 )); then
-        printf '\n' # needed
-        select subtitle in "${subtitles[@]}"; do
-            if [[ $REPLY =~ ^00$ ]]; then
-                printf '\n\n %s\n' \
-                       'You choose all subtitles.'
-                grep_print "${subtitles[@]}"
-                play "${subtitles[@]}"
-                exit 0
-            elif [[ -n $subtitle ]]; then
-                selected="$subtitle"
-                break
-            else
-                printf '\n \e[1;31m%s\e[0m\n' \
-                       'Something is wrong!'
-                back_trace
-                exit 1
-            fi
-        done
-    fi
-fi
-if [[ -n $selected ]]; then
-    grep_print "$selected"
-    subtitles="$selected"
-    play "$subtitles"
+# terminal_select # can select() on terminal
+if [[ -n ${selected:-} ]]; then
+    playing_print "$selected"
+    subtitles=( "$selected" )
+    play "${subtitles[@]}"
 elif [[ -n $subtitles ]]; then
-    # check_title_with_ep
-    grep_print "${subtitles[@]}"
+    order_subtitle
+    playing_print "${subtitles[@]}"
     play "${subtitles[@]}"
 else
     mpv "$g_arg1"
