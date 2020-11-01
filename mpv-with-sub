@@ -55,7 +55,7 @@ SUB_EXT='(srt|smi|ass|sub)'
 #
 # add another subtitle directory
 #
-SUB_DIR=( '/mnt/data/Downloads/sub' )
+SUB_DIRS=( '/mnt/data/Downloads/sub'  '/mnt/data/Downloads' )
 video_file="${g_arg1##*/}"
 video_dir="${g_arg1%$video_file}"
 video_file_ext=${g_arg1##*.}
@@ -136,6 +136,7 @@ check() {
     local subtitles4=()
     local subtitles5=()
     local file_name lower_file file_name_ext file_sans_name
+    local p1 p2
     for file in $arg1; do # error if quote
         file_name="${file##*/}"
         lower_file="${file_name,,}"
@@ -180,12 +181,21 @@ check() {
         subtitles=( "${subtitles4[@]}" )
     elif [[ -n ${subtitles5[@]} ]]; then
         subtitles=( "${subtitles5[@]}" )
-    else
-        printf '\n \e[1;31m%s\n\n %s\e[0m\n\n' \
-               "No subtitle in" \
-               "$PWD"
     fi
-    test_print subtitles "${subtitles[*]}"
+    if [[ -z $subtitles ]]; then
+        p1='\n \e[1;38;5;88m%s\n\n \e[1;38;5;240m%s\e[0m\n\n'
+        printf "$p1" \
+               "subtitle is not in :" \
+               "${PWD}/"
+    else
+        p2='\n \e[1;38;5;98m%s\n\n \e[1;38;5;240m%s\e[0m\n\n'
+        printf "$p2" \
+               "subtitle is in :" \
+               "${PWD}/"
+    fi
+
+
+    # test_print subtitles "${subtitles[*]}"
     return 0
 }
 
@@ -195,7 +205,7 @@ _play() {
     #
     local arg1="$1"
     local the_subdir subfiles
-    for subdir in "${SUB_DIR[@]}"; do
+    for subdir in "${SUB_DIRS[@]}"; do
         if [[ $arg1 =~ $subdir ]] ;then
             the_subdir="$subdir"
             break
@@ -220,7 +230,7 @@ play() {
     local arg1="$1"
     local the_subdir=
     local subfiles
-    for subdir in "${SUB_DIR[@]}"; do
+    for subdir in "${SUB_DIRS[@]}"; do
         if [[ $arg1 =~ $subdir ]] ;then
             the_subdir="$subdir"
             break
@@ -244,9 +254,9 @@ order_subtitle() {
     # accuracy as possible as we can
     #
     local video_part_name rating_sub
+    local match1 match2
     local c=0
     if (( ${#subtitles[@]} > 1 )); then
-        # test_print ep "$ep"
         # test_print video_lower_name "$video_lower_name"
         video_part_name=$(sed "s/$ep.*//" <<< "$video_lower_name")
         # test_print video_part_name "$video_part_name"
@@ -264,11 +274,17 @@ order_subtitle() {
             c=0
         done
         # test_print rating_sub "$rating_sub"
-        rating_sub=$(sort -r <<< $rating_sub | sed 's/^[0-9]\+ //')
-
+        rating_sub=$(sort -r <<< $rating_sub) # reverse
+        match1=$(sed -n 1p <<< $rating_sub  | grep -o '^[0-9]\+')
+        match2=$(sed -n 2p <<< $rating_sub  | grep -o '^[0-9]\+')
+        rating_sub=$(sed 's/^[0-9]\+ //' <<< $rating_sub)
         # test_print rating_sub "$rating_sub"
         # sleep 100
-        readarray -t subtitles <<< "$rating_sub"
+        if (( $match1 - $match2 )); then # test
+            subtitles=( $(head -n 1  <<< $rating_sub) )
+        else
+            readarray -t subtitles <<< "$rating_sub"
+        fi
     fi
     return 0
 }
@@ -322,7 +338,7 @@ fi
 [[ -n $video_dir ]] && cd "$video_dir"
 check "**/*"
 if [[ -z $subtitles ]]; then
-    for subdir in "${SUB_DIR[@]}"; do
+    for subdir in "${SUB_DIRS[@]}"; do
         cd "$subdir"
         check "**/*"
         if [[ -n $subtitles ]]; then
