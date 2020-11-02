@@ -25,7 +25,7 @@
 # 4. episode subtitle like S01E01
 # 5. in terminal, if subtitles exist, you can choose one or all
 
-# it searches a current directory recursively first, if none, searches SUBDIR
+# it searches a current directory recursively first, if none, searches SUBDIRS
 # if it fails to find a subtitle, it uses the mpv's original option
 
 # the episode part of a subtitle
@@ -34,7 +34,7 @@
 # E01
 # Series.1.Part.1
 
-## TODO
+### TODO
 #
 
 
@@ -67,17 +67,16 @@ video_lower_name="${video_sans_name,,}"
 G1='s[0-9]\+\.\?e[0-9]\+'
 G2='e[0-9]\+'
 G3='series\.\?[0-9]\+\.\?part\.\?[0-9]\+'
-ep1=$(grep -o "$G1" <<< $video_lower_name)
-ep2=$(grep -o "$G2" <<< $video_lower_name)
-ep3=$(grep -o "$G3" <<< $video_lower_name)
-ep="${ep1:-${ep2:-$ep3}}" # need test
-# if [[ -n $ep1 ]]; then
-#     ep="$ep1"
-# elif [[ -n $ep2 ]]; then
-#     ep="$ep2"
-# elif [[ -n $ep3 ]]; then
-#     ep="$ep3"
-# fi
+ep=$(grep -o "$G1" <<< $video_lower_name \
+          || grep -o "$G2" <<< $video_lower_name \
+          || grep -o "$G3" <<< $video_lower_name)
+
+
+# ep1=$(grep -o "$G1" <<< $video_lower_name)
+# ep2=$(grep -o "$G2" <<< $video_lower_name)
+# ep3=$(grep -o "$G3" <<< $video_lower_name)
+# ep="${ep1:-${ep2:-$ep3}}" # need test
+
 
 
 back_trace() {
@@ -121,9 +120,9 @@ test_print() {
 }
 
 playing_print() {
-    local arg1="$1"
+    local arg1=( "$1" )
     local p1='\n\e[1;38;5;130m %s\e[0m\n\n'
-    printf "$p1" "$arg1"
+    printf "$p1" "${arg1[@]}"
     return 0
 }
 
@@ -131,13 +130,14 @@ check() {
     local arg1="$1"
     local sub_count=0
     local subtitles1=
-    local subtitles2=()
+    local subtitles2=
     local subtitles3=()
     local subtitles4=()
     local subtitles5=()
+    local subtitles6=()
     local file_name lower_file file_name_ext file_sans_name
     local p1 p2
-    for file in $arg1; do # error if quote
+    for file in $arg1; do # error if quote, arg1 => **/*
         file_name="${file##*/}"
         lower_file="${file_name,,}"
         file_name_ext=${lower_file##*.}
@@ -150,8 +150,9 @@ check() {
                 # test_print subtitles1 "$subtitles1"
                 break
             elif [[ $file_sans_name =~ $video_sans_name ]]; then
-                subtitles2+=( "$file" )
+                subtitles2="$file"
                 # test_print subtitles2 "${subtitles2[-1]}"
+                break
             elif [[ -n "$ep" ]]; then
                 if [[ $file_sans_name =~ $ep|${ep/./}|${ep/e/.e} ]]; then
                     subtitles3+=( "$file" )
@@ -163,6 +164,9 @@ check() {
                     subtitles5+=( "$file" )
                     # test_print subtitles5 "${subtitles5[-1]}"
                 fi
+            else
+                subtitles6+=( "$file" ) # rest
+                # test_print subtitles6 "${subtitles6[-1]}"
             fi
         fi
     done
@@ -173,14 +177,16 @@ check() {
         subtitles="$subfile"
     elif [[ -n $subtitles1 ]]; then
         subtitles="$subtitles1"
-    elif [[ -n ${subtitles2[@]} ]]; then # need ${[@]} not $subtitles2
-        subtitles=( "${subtitles2[@]}" )
+    elif [[ -n $subtitles2 ]]; then # need ${[@]} not $subtitles2
+        subtitles="$subtitles2"
     elif [[ -n ${subtitles3[@]} ]]; then
         subtitles=( "${subtitles3[@]}" )
     elif [[ -n ${subtitles4[@]} ]]; then
         subtitles=( "${subtitles4[@]}" )
     elif [[ -n ${subtitles5[@]} ]]; then
         subtitles=( "${subtitles5[@]}" )
+    elif [[ -n ${subtitles6[@]} ]]; then
+        subtitles=( "${subtitles6[@]}" )
     fi
     if [[ -z $subtitles ]]; then
         p1='\n \e[1;38;5;88m%s\n\n \e[1;38;5;240m%s\e[0m\n\n'
@@ -193,8 +199,6 @@ check() {
                "subtitle is in :" \
                "${PWD}/"
     fi
-
-
     # test_print subtitles "${subtitles[*]}"
     return 0
 }
@@ -203,19 +207,18 @@ _play() {
     #
     # with --sub-files="subtitle1:subtitle2
     #
-    local arg1="$1"
+    local arg1=( "$1" )
     local the_subdir subfiles
     for subdir in "${SUB_DIRS[@]}"; do
-        if [[ $arg1 =~ $subdir ]] ;then
+        if [[ ${arg1[@]} =~ $subdir ]] ;then
             the_subdir="$subdir"
             break
         fi
     done
     for subtitle in "${subtitles[@]}"; do
-        subfiles+="$subtitle":
+        subfiles+="${subtitles:+:}""$subtitle"
     done
-    subfiles="${subfiles%:}"
-    if [[ $arg1 =~ $the_subdir ]]; then
+    if [[ ${arg1[@]} =~ $the_subdir ]]; then
         mpv --sub-files="$subfiles" "$g_arg1"
     else
         mpv --sub-files="$video_dir""$subfiles" "$g_arg1"
@@ -227,16 +230,16 @@ play() {
     #
     # with array --sub-file="$subtitle1" --sub-file="$subtitle2"
     #
-    local arg1="$1"
+    local arg1=( "$1" )
     local the_subdir=
     local subfiles
     for subdir in "${SUB_DIRS[@]}"; do
-        if [[ $arg1 =~ $subdir ]] ;then
+        if [[ ${arg1[@]} =~ $subdir ]] ;then
             the_subdir="$subdir"
             break
         fi
     done
-    if [[ $arg1 =~ $the_subdir ]] ;then
+    if [[ ${arg1[@]} =~ $the_subdir ]] ;then
         for subtitle in "${subtitles[@]}"; do
             subfiles+=( --sub-file="$subtitle" )
         done
@@ -245,7 +248,7 @@ play() {
             subfiles+=( --sub-file="$video_dir""$subtitle" )
         done
     fi
-    mpv "${subfiles[@]}" "$g_arg1"
+    mpv "${subfiles[*]}" "$g_arg1"
     return 0
 }
 
@@ -279,7 +282,6 @@ order_subtitle() {
         match2=$(sed -n 2p <<< $rating_sub  | grep -o '^[0-9]\+')
         rating_sub=$(sed 's/^[0-9]\+ //' <<< $rating_sub)
         # test_print rating_sub "$rating_sub"
-        # sleep 100
         if (( $match1 - $match2 )); then # test
             subtitles=( $(head -n 1  <<< $rating_sub) )
         else
@@ -304,7 +306,7 @@ terminal_select () {
                 if [[ $REPLY =~ ^00$ ]]; then
                     printf '\n\n %s\n' \
                            'You choose all subtitles.'
-                    playing_print "${subtitles[@]}"
+                    playing_print "${subtitles[@]}" # test
                     play "${subtitles[@]}"
                     exit 0
                 elif [[ -n $subtitle ]]; then
@@ -341,9 +343,7 @@ if [[ -z $subtitles ]]; then
     for subdir in "${SUB_DIRS[@]}"; do
         cd "$subdir"
         check "**/*"
-        if [[ -n $subtitles ]]; then
-            break
-        fi
+        [[ -n $subtitles ]] && break
     done
 fi
 # terminal_select # can select() on terminal
